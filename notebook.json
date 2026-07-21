@@ -1,0 +1,253 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1c09UQ4yha7fjuxq59mSEv-MBB7SvpOpn",
+          "mode": "list",
+          "cachedResultName": "Lead Scoring.csv",
+          "cachedResultUrl": "https://drive.google.com/file/d/1c09UQ4yha7fjuxq59mSEv-MBB7SvpOpn/view?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -432,
+        -288
+      ],
+      "id": "776b3dc5-a008-4066-90c4-b3aff69249d2",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "2N8RK0XnFCbiQaOU",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        64,
+        -240
+      ],
+      "id": "73369df1-dc00-45b0-9342-9ef3d8b1d008",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst rows = $input.all();\n\nif (rows.length === 0) {\n return [{\n json: {\n error: \"Dataset is empty\"\n }\n }];\n}\n\nconst data = rows.map(r => r.json);\n\nconst columns = Object.keys(data[0]);\n\nconst totalRows = data.length;\nconst totalColumns = columns.length;\n\nconst missingValues = {};\n\nfor (const col of columns) {\n missingValues[col] = 0;\n\n for (const row of data) {\n\n const value = row[col];\n\n if (\n value === null ||\n value === undefined ||\n value === \"\" ||\n value === \"NA\" ||\n value === \"NaN\"\n ) {\n missingValues[col]++;\n }\n }\n}\n\n\nconst uniqueRows = new Set(\n data.map(r => JSON.stringify(r))\n);\n\nconst duplicateRows = totalRows - uniqueRows.size;\n\n\nconst numericColumns = [];\nconst categoricalColumns = [];\n\nfor (const col of columns) {\n\n let numeric = true;\n\n for (const row of data) {\n\n const value = row[col];\n\n if (\n value === \"\" ||\n value === null ||\n value === undefined\n ) {\n continue;\n }\n\n if (isNaN(Number(value))) {\n numeric = false;\n break;\n }\n }\n\n if (numeric)\n numericColumns.push(col);\n else\n categoricalColumns.push(col);\n}\n\nreturn [{\n json: {\n\n rows: totalRows,\n\n columns: totalColumns,\n\n columnNames: columns,\n\n duplicateRows,\n\n missingValues,\n\n numericColumns,\n\n categoricalColumns\n\n }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        -240
+      ],
+      "id": "21345bc6-5b86-49d5-9978-3c70756f6dca",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the following dataset.\n\nRows:\n{{$json.rows}}\n\nColumns:\n{{$json.columnNames}}\n\nMissing Values:\n{{$json.missingValues}}\n\nDuplicate Rows:\n{{$json.duplicateRows}}\n\nNumeric Columns:\n{{$json.numericColumns}}\n\nCategorical Columns:\n{{$json.categoricalColumns}}\n\nSample Data:\n{{$json.rows}}\n\nGenerate the execution plan strictly according to the required JSON schema.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an expert Machine Learning Workflow Planner.\n\nYour task is to analyze the provided dataset metadata and generate a structured execution plan for an automated machine learning pipeline.\n\nYour output will be consumed directly by a Python AutoML Engine.\n\nReturn ONLY a valid JSON object.\n\nDo NOT output:\n- Markdown\n- Code\n- Explanations\n- Comments\n- Reasoning\n- Extra text\n\nProblem types:\n\n- classification\n- regression\n- clustering\n- forecasting\n\nChoose the most appropriate target column.\n\nReturn preprocessing as a JSON OBJECT (NOT an array).\n\nSupported preprocessing fields:\n\n{\n    \"missing_values\": \"mean|median|most_frequent\",\n    \"categorical_missing\": \"most_frequent\",\n    \"encoding\": \"onehot|ordinal\",\n    \"scaling\": \"standard|minmax|robust\"\n}\n\nRecommended models should be ordered from best to worst.\n\nSupported classification models:\n\n- Logistic Regression\n- Decision Tree\n- Random Forest\n- Gradient Boosting\n- AdaBoost\n- Support Vector Machine\n- KNN\n- Naive Bayes\n- Neural Network\n\nSupported regression models:\n\n- Linear Regression\n- Ridge Regression\n- Lasso Regression\n- Decision Tree Regressor\n- Random Forest Regressor\n- Gradient Boosting Regressor\n- Support Vector Regressor\n- KNN Regressor\n\nSupported clustering models:\n\n- KMeans\n- DBSCAN\n- Agglomerative Clustering\n\nSupported forecasting models:\n\n- ARIMA\n- SARIMA\n- Prophet\n\nFor visualizations choose only from:\n\n- model_comparison\n- confusion_matrix\n- roc_curve\n- precision_recall\n- feature_importance\n\nReturn EXACTLY this schema:\n\n{\n    \"problem_type\": \"\",\n    \"target_column\": \"\",\n    \"preprocessing\": {\n        \"missing_values\": \"\",\n        \"categorical_missing\": \"\",\n        \"encoding\": \"\",\n        \"scaling\": \"\"\n    },\n    \"recommended_models\": [\n        {\n            \"priority\": 1,\n            \"name\": \"\"\n        }\n    ],\n    \"visualizations\": [\n        {\n            \"type\": \"\"\n        }\n    ],\n    \"test_size\": 0.2,\n    \"random_state\": 42,\n    \"confidence\": 0.0\n}\n\nDo not rename any fields.\n\nDo not add extra fields.\n\nReturn ONLY JSON."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        432,
+        -320
+      ],
+      "id": "2daf6c94-ec58-43a5-8890-3ab452a4ebe9",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        416,
+        -128
+      ],
+      "id": "ebf65466-e02d-40f7-ab24-5984417d45ce",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "aQFbS0ZN6t4L4xKo",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const obj = JSON.parse($input.first().json.output);\nreturn [\n {\n json: obj\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        80
+      ],
+      "id": "75e4c1e7-3a96-43b4-ac20-3051681b63b8",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ml_engine:8000/train",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  dataset_path: \"/shared/datasets/Lead Scoring.csv\",\n  execution_plan: $json\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -480,
+        64
+      ],
+      "id": "619cc358-43c5-4248-ab54-5d113d7f0980",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        -304
+      ],
+      "id": "bb72c054-69f4-41a2-8e5b-4444f66695fa",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/shared/datasets/Lead Scoring.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -224,
+        -288
+      ],
+      "id": "b458f92a-a764-4b11-bba9-7e3a9ca0ca05",
+      "name": "Read/Write Files from Disk"
+    }
+  ],
+  "connections": {
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "AI Agent": [
+      {
+        "output": "{\n    \"problem_type\": \"classification\",\n    \"target_column\": \"Converted\",\n    \"preprocessing\": {\n        \"missing_values\": \"mean\",\n        \"categorical_missing\": \"most_frequent\",\n        \"encoding\": \"onehot\",\n        \"scaling\": \"standard\"\n    },\n    \"recommended_models\": [\n        {\n            \"priority\": 1,\n            \"name\": \"Gradient Boosting\"\n        },\n        {\n            \"priority\": 2,\n            \"name\": \"Random Forest\"\n        },\n        {\n            \"priority\": 3,\n            \"name\": \"Decision Tree\"\n        },\n        {\n            \"priority\": 4,\n            \"name\": \"Logistic Regression\"\n        },\n        {\n            \"priority\": 5,\n            \"name\": \"Support Vector Machine\"\n        },\n        {\n            \"priority\": 6,\n            \"name\": \"KNN\"\n        },\n        {\n            \"priority\": 7,\n            \"name\": \"Naive Bayes\"\n        },\n        {\n            \"priority\": 8,\n            \"name\": \"AdaBoost\"\n        },\n        {\n            \"priority\": 9,\n            \"name\": \"Neural Network\"\n        }\n    ],\n    \"visualizations\": [\n        {\n            \"type\": \"model_comparison\"\n        },\n        {\n            \"type\": \"confusion_matrix\"\n        },\n        {\n            \"type\": \"roc_curve\"\n        },\n        {\n            \"type\": \"precision_recall\"\n        },\n        {\n            \"type\": \"feature_importance\"\n        }\n    ],\n    \"test_size\": 0.2,\n    \"random_state\": 42,\n    \"confidence\": 0.95\n}"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "62f1f1a6e702c198d04d70447022373f1d8ac30f2f895a3697f10ae527b226a8"
+  }
+}
