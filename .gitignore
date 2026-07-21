@@ -1,0 +1,117 @@
+# ----------------------------
+# Python
+# ----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# ----------------------------
+# Environment Variables
+# ----------------------------
+.env
+.env.*
+
+# ----------------------------
+# IDEs
+# ----------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ----------------------------
+# Jupyter
+# ----------------------------
+.ipynb_checkpoints/
+
+# ----------------------------
+# Logs
+# ----------------------------
+logs/
+*.log
+
+# ----------------------------
+# Build / Distribution
+# ----------------------------
+build/
+dist/
+*.egg-info/
+
+# ----------------------------
+# OS Files
+# ----------------------------
+.DS_Store
+Thumbs.db
+
+# ----------------------------
+# Docker
+# ----------------------------
+docker-compose.override.yml
+
+# ----------------------------
+# Runtime Data (DO NOT COMMIT)
+# ----------------------------
+shared/artifacts/
+shared/reports/
+shared/saved_models/
+shared/datasets/
+
+# If you want to keep the folder structure,
+# uncomment the next four lines and add
+# an empty .gitkeep file inside each folder.
+#!shared/artifacts/.gitkeep
+#!shared/reports/.gitkeep
+#!shared/saved_models/.gitkeep
+#!shared/datasets/.gitkeep
+
+# ----------------------------
+# n8n Runtime
+# ----------------------------
+n8n_data/
+
+# ----------------------------
+# PostgreSQL Data
+# ----------------------------
+postgres/
+
+# ----------------------------
+# Model Artifacts
+# ----------------------------
+*.pkl
+*.joblib
+*.onnx
+*.h5
+*.pt
+*.pth
+
+# ----------------------------
+# Test & Coverage
+# ----------------------------
+.coverage
+.pytest_cache/
+htmlcov/
+
+# ----------------------------
+# Temporary Files
+# ----------------------------
+*.tmp
+*.temp
+
+# ----------------------------
+# Misc
+# ----------------------------
+*.sqlite3
+*.db
+
+n8n/
+n8n_data/
+*.sqlite
+*.db
