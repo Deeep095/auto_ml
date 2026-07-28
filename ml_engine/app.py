@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi import HTTPException
 import traceback
-from auto_ml.ml_engine.pipeline import run_pipeline
+from pipeline import run_pipeline
 
 
 app = FastAPI(
@@ -35,7 +35,9 @@ def health():
 @app.post("/train")
 def train(request: dict):
 
+    print("========== REQUEST RECEIVED ==========",flush=True)
     try:
+        print("========== REQUEST tried ==========",flush=True)
 
         dataset_path = request["dataset_path"]
 
@@ -48,7 +50,7 @@ def train(request: dict):
             execution_plan
 
         )
-
+        print(f"========== REQUEST SUCCESS {result}==========",flush=True)
         return result
 
     except KeyError as e:

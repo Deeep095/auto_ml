@@ -20,7 +20,7 @@ from sklearn.model_selection import (
     train_test_split
 )
 
-from auto_ml.ml_engine.config import (
+from config import (
     DEFAULT_RANDOM_STATE,
     DEFAULT_TEST_SIZE
 )

@@ -6,7 +6,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from auto_ml.ml_engine.config import (
+from config import (
     ARTIFACT_DIR,
     MODEL_DIR,
     REPORT_DIR,

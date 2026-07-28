@@ -1,28 +1,28 @@
 from sklearn.pipeline import Pipeline
 
-from auto_ml.ml_engine.preprocessing import preprocess_request
+from preprocessing import preprocess_request
 
-from auto_ml.ml_engine.metrics import (
+from metrics import (
     evaluate_model,
     metric_to_score
 )
 
-from auto_ml.ml_engine.models import (
+from models import (
     CLASSIFICATION_MODELS,
     REGRESSION_MODELS,
     CLUSTERING_MODELS,
     FORECASTING_MODELS
 )
 
-from auto_ml.ml_engine.plots import (
+from plots import (
     PLOT_REGISTRY
 )
 
-from auto_ml.ml_engine.reports import (
+from reports import (
     generate_report
 )
 
-from auto_ml.ml_engine.utils import (
+from utils import (
     create_directories,
     create_experiment_directory,
     save_model

@@ -9,7 +9,7 @@ from jinja2 import (
     select_autoescape
 )
 
-from auto_ml.ml_engine.config import (
+from config import (
     REPORT_DIR,
     REPORT_NAME
 )

@@ -20,4 +20,11 @@ services:
     depends_on:
       - ml-engine
     environment:
-    - N8N_RESTRICT_FILE_ACCESS_TO=/shared
+      - N8N_HOST=front-broker-gatherer.ngrok-free.dev
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://front-broker-gatherer.ngrok-free.dev/
+      - N8N_PORT=5678
+      - N8N_RESTRICT_FILE_ACCESS_TO=/shared
+      - N8N_ENABLE_EXECUTIONS_PROCESS=main
+      - NODE_FUNCTION_ALLOW_BUILTIN=*
+      - NODE_FUNCTION_ALLOW_EXTERNAL=*

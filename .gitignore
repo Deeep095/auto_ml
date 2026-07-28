@@ -63,6 +63,9 @@ shared/artifacts/
 shared/reports/
 shared/saved_models/
 shared/datasets/
+shared/uploads/
+shared/sessions/
+shared/
 
 # If you want to keep the folder structure,
 # uncomment the next four lines and add
