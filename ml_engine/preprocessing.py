@@ -42,16 +42,17 @@ def load_dataset(dataset_path):
 
 
 def split_features_target(
-
     dataframe,
-
     target_column
-
 ):
-
-    X = dataframe.drop(
-        columns=[target_column]
+    dataframe[target_column] = dataframe[target_column].replace(
+        ["", " ", "NA", "N/A", "NaN", "NULL", "null"],
+        pd.NA
     )
+    # Remove rows where target is missing
+    dataframe = dataframe.dropna(subset=[target_column]).reset_index(drop=True)
+
+    X = dataframe.drop(columns=[target_column])
 
     y = dataframe[target_column]
 
@@ -399,6 +400,7 @@ def prepare_dataset(
     execution_plan
 
 ):
+    
 
     dataframe = load_dataset(
 
@@ -412,6 +414,15 @@ def prepare_dataset(
 
     ]
 
+    print("Target:", target_column)
+    
+    print(
+        dataframe[target_column]
+            .isna()
+            .sum(),
+        "missing values"
+    )
+
     X, y = split_features_target(
 
         dataframe,
@@ -419,6 +430,11 @@ def prepare_dataset(
         target_column
 
     )
+
+    if y.isna().sum() > 0:
+        raise ValueError(
+            f"Target column '{target_column}' still contains {y.isna().sum()} missing values."
+        )
 
     preprocessor = build_preprocessor(
 

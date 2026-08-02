@@ -51,7 +51,7 @@ CLASSIFICATION_MODELS = {
 
     "AdaBoost": AdaBoostClassifier(random_state=42),
 
-    "Support Vector Machine": SVC(probability=True),
+    "Support Vector Machine": SVC(),
 
     "KNN": KNeighborsClassifier(),
 

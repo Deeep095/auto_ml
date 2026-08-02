@@ -50,6 +50,8 @@ def train(request: dict):
             execution_plan
 
         )
+        print("========== REQUEST SUCCESS ==========")
+        print(result["best_model"])
         print(f"========== REQUEST SUCCESS {result}==========",flush=True)
         return result
 

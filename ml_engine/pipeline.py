@@ -54,6 +54,9 @@ def get_model_registry(problem_type):
     )
 
 
+import time
+
+
 def train_models(
 
     execution_plan,
@@ -90,6 +93,8 @@ def train_models(
 
     best_model_name = None
 
+    total_start = time.time()
+
     for model_info in execution_plan["recommended_models"]:
 
         model_name = model_info["name"]
@@ -97,6 +102,9 @@ def train_models(
         if model_name not in registry:
 
             continue
+
+        print("=" * 60, flush=True)
+        print(f"Training {model_name}...", flush=True)
 
         estimator = registry[model_name]
 
@@ -124,6 +132,8 @@ def train_models(
 
         )
 
+        start = time.time()
+
         pipeline.fit(
 
             X_train,
@@ -132,10 +142,26 @@ def train_models(
 
         )
 
+        fit_time = time.time() - start
+
+        print(
+            f"✓ Training completed in {fit_time:.2f} seconds",
+            flush=True
+        )
+
+        start = time.time()
+
         y_pred = pipeline.predict(
 
             X_test
 
+        )
+
+        predict_time = time.time() - start
+
+        print(
+            f"✓ Prediction completed in {predict_time:.2f} seconds",
+            flush=True
         )
 
         metrics = evaluate_model(
@@ -146,6 +172,11 @@ def train_models(
 
             y_pred
 
+        )
+
+        print(
+            f"✓ Metrics: {metrics}",
+            flush=True
         )
 
         score = metric_to_score(
@@ -182,6 +213,18 @@ def train_models(
 
             best_model_name = model_name
 
+        print(
+            f"Finished {model_name} "
+            f"(Total: {fit_time + predict_time:.2f}s)",
+            flush=True
+        )
+
+    print("=" * 60, flush=True)
+    print(
+        f"All models completed in {time.time() - total_start:.2f} seconds",
+        flush=True
+    )
+
     results.sort(
 
         key=lambda x: metric_to_score(
@@ -209,6 +252,11 @@ def train_models(
         "best_model_name": best_model_name
 
     }
+
+
+
+
+
 def generate_visualizations(
 
     execution_plan,
@@ -220,6 +268,8 @@ def generate_visualizations(
     experiment_dir
 
 ):
+
+    total_start = time.time()
 
     artifacts = {}
 
@@ -269,6 +319,14 @@ def generate_visualizations(
 
             continue
 
+        print("=" * 60, flush=True)
+        print(
+            f"Generating {visualization_type}...",
+            flush=True
+        )
+
+        start = time.time()
+
         output = PLOT_REGISTRY[
 
             visualization_type
@@ -293,6 +351,13 @@ def generate_visualizations(
 
         )
 
+        elapsed = time.time() - start
+
+        print(
+            f"✓ {visualization_type} generated in {elapsed:.2f} seconds",
+            flush=True
+        )
+
         if output is not None:
 
             artifacts[
@@ -301,7 +366,242 @@ def generate_visualizations(
 
             ] = str(output)
 
+    print("=" * 60, flush=True)
+    print(
+        f"All visualizations completed in {time.time() - total_start:.2f} seconds",
+        flush=True
+    )
+
     return artifacts
+
+
+# def generate_visualizations(
+
+#     execution_plan,
+
+#     training_output,
+
+#     prepared_data,
+
+#     experiment_dir
+
+# ):
+
+#     artifacts = {}
+
+#     visualizations = execution_plan.get(
+
+#         "visualizations",
+
+#         []
+
+#     )
+
+#     best_model_name = training_output[
+
+#         "best_model_name"
+
+#     ]
+
+#     best_pipeline = training_output[
+
+#         "trained_models"
+
+#     ][
+
+#         best_model_name
+
+#     ]
+
+#     y_pred = training_output[
+
+#         "predictions"
+
+#     ][
+
+#         best_model_name
+
+#     ]
+
+#     for visualization in visualizations:
+
+#         visualization_type = visualization[
+
+#             "type"
+
+#         ]
+
+#         if visualization_type not in PLOT_REGISTRY:
+
+#             continue
+
+#         output = PLOT_REGISTRY[
+
+#             visualization_type
+
+#         ](
+
+#             artifact_dir=experiment_dir,
+
+#             model=best_pipeline,
+
+#             model_name=best_model_name,
+
+#             results=training_output["results"],
+
+#             X_test=prepared_data["X_test"],
+
+#             y_test=prepared_data["y_test"],
+
+#             y_pred=y_pred,
+
+#             options=visualization
+
+#         )
+
+#         if output is not None:
+
+#             artifacts[
+
+#                 visualization_type
+
+#             ] = str(output)
+
+#     return artifacts
+
+
+# def run_pipeline(
+
+#     dataset_path,
+
+#     execution_plan
+
+# ):
+
+#     create_directories()
+
+#     experiment_dir = create_experiment_directory()
+
+#     prepared_data = preprocess_request(
+
+#         dataset_path,
+
+#         execution_plan
+
+#     )
+
+#     training_output = train_models(
+
+#         execution_plan,
+
+#         prepared_data
+
+#     )
+
+#     best_pipeline = training_output[
+
+#         "best_model"
+
+#     ]
+
+#     save_model(
+
+#         best_pipeline,
+
+#         experiment_dir
+
+#     )
+
+#     artifacts = generate_visualizations(
+
+#         execution_plan,
+
+#         training_output,
+
+#         prepared_data,
+
+#         experiment_dir
+
+#     )
+
+#     report_files = generate_report(
+
+#         dataset_shape=list(
+
+#             prepared_data["dataframe"].shape
+
+#         ),
+
+#         target_column=execution_plan[
+
+#             "target_column"
+
+#         ],
+
+#         problem_type=execution_plan[
+
+#             "problem_type"
+
+#         ],
+
+#         best_model=training_output[
+
+#             "results"
+
+#         ][0],
+
+#         all_models=training_output[
+
+#             "results"
+
+#         ],
+
+#         artifacts=artifacts
+
+#     )
+
+#     artifacts.update(
+
+#         report_files
+
+#     )
+
+#     response = {
+
+#         "dataset_shape": list(
+
+#             prepared_data["dataframe"].shape
+
+#         ),
+
+#         "problem_type": execution_plan[
+
+#             "problem_type"
+
+#         ],
+
+#         "target_column": execution_plan[
+
+#             "target_column"
+
+#         ],
+
+#         "best_model": training_output["results"][0],
+
+#         "all_models": training_output["results"],
+
+#         "artifacts": artifacts
+
+#     }
+
+#     return response
+
+
+
+
+
+
+
 
 
 def run_pipeline(
@@ -312,9 +612,16 @@ def run_pipeline(
 
 ):
 
+    pipeline_start = time.time()
+
     create_directories()
 
     experiment_dir = create_experiment_directory()
+
+    print("=" * 60, flush=True)
+    print("Starting preprocessing...", flush=True)
+
+    start = time.time()
 
     prepared_data = preprocess_request(
 
@@ -324,6 +631,16 @@ def run_pipeline(
 
     )
 
+    print(
+        f"✓ Preprocessing completed in {time.time() - start:.2f} seconds",
+        flush=True
+    )
+
+    print("=" * 60, flush=True)
+    print("Starting model training...", flush=True)
+
+    start = time.time()
+
     training_output = train_models(
 
         execution_plan,
@@ -332,11 +649,21 @@ def run_pipeline(
 
     )
 
+    print(
+        f"✓ Training completed in {time.time() - start:.2f} seconds",
+        flush=True
+    )
+
     best_pipeline = training_output[
 
         "best_model"
 
     ]
+
+    print("=" * 60, flush=True)
+    print("Saving best model...", flush=True)
+
+    start = time.time()
 
     save_model(
 
@@ -345,6 +672,16 @@ def run_pipeline(
         experiment_dir
 
     )
+
+    print(
+        f"✓ Model saved in {time.time() - start:.2f} seconds",
+        flush=True
+    )
+
+    print("=" * 60, flush=True)
+    print("Generating visualizations...", flush=True)
+
+    start = time.time()
 
     artifacts = generate_visualizations(
 
@@ -357,6 +694,16 @@ def run_pipeline(
         experiment_dir
 
     )
+
+    print(
+        f"✓ Visualizations completed in {time.time() - start:.2f} seconds",
+        flush=True
+    )
+
+    print("=" * 60, flush=True)
+    print("Generating reports...", flush=True)
+
+    start = time.time()
 
     report_files = generate_report(
 
@@ -394,6 +741,11 @@ def run_pipeline(
 
     )
 
+    print(
+        f"✓ Reports generated in {time.time() - start:.2f} seconds",
+        flush=True
+    )
+
     artifacts.update(
 
         report_files
@@ -427,5 +779,12 @@ def run_pipeline(
         "artifacts": artifacts
 
     }
+
+    print("=" * 60, flush=True)
+    print(
+        f"✓ TOTAL PIPELINE TIME: {time.time() - pipeline_start:.2f} seconds",
+        flush=True
+    )
+    print("=" * 60, flush=True)
 
     return response
