@@ -1,0 +1,2775 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {
+          "download": true
+        }
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2624,
+        7504
+      ],
+      "id": "064da194-504b-49bc-a3ad-8c034cca80e5",
+      "name": "Telegram Trigger",
+      "webhookId": "automl-dashboard-0001",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst j = item.json;\nconst isCallback = !!j.callback_query;\n\nconst chatId = isCallback ? j.callback_query.message.chat.id : (j.message ? j.message.chat.id : null);\nconst messageId = isCallback ? j.callback_query.message.message_id : null;\nconst callbackData = isCallback ? j.callback_query.data : null;\nconst rawText = isCallback ? callbackData : (j.message && j.message.text ? j.message.text.trim() : \"\");\nconst document = (!isCallback && j.message && j.message.document) ? j.message.document : null;\n\nreturn [{\n  json: {\n    chatId, messageId, isCallback,\n    text: (rawText || \"\").toLowerCase(),\n    rawText: rawText || \"\",\n    isDocument: !!document,\n    fileId: document ? document.file_id : null,\n    fileName: document ? (document.file_name || (\"dataset_\" + Date.now() + \".csv\")) : null,\n    original: j\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2448,
+        7504
+      ],
+      "id": "71d253ce-7ad9-4d5d-8757-d5fbd1f4f70f",
+      "name": "Normalize Update"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.isCallback}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
+              "id": "c1"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2272,
+        7728
+      ],
+      "id": "b5e0595f-79f2-48cc-90f8-5b590443658a",
+      "name": "Is Callback?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$credentials.telegramApi.token}}/answerCallbackQuery",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "telegramApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"callback_query_id\": $json.original.callback_query.id} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2064,
+        7712
+      ],
+      "id": "d12ffa7b-8150-4375-a258-fd3d54c95089",
+      "name": "Answer Callback Query",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fileSelector": "=/shared/sessions/{{$json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -2288,
+        7280
+      ],
+      "id": "97368e9c-49b7-4444-81da-1bde1f7ab9f5",
+      "name": "Read Session File",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\n\nlet session = {\n    state: \"idle\",\n    dataset_path: null,\n    dataset_name: null,\n    pending_files: [],\n    columns: [],\n    target_column: null,\n    problem_type: null,\n    available_models: [],\n    selected_models: []\n};\n\ntry {\n\n    if (\n        item.json.data &&\n        Array.isArray(item.json.data) &&\n        item.json.data.length > 0\n    ) {\n        session = {\n            ...session,\n            ...item.json.data[0]\n        };\n    }\n\n}\ncatch(e){\n    console.log(e);\n}\n\nreturn [\n{\n    json: session\n}\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1920,
+        7280
+      ],
+      "id": "be1296e4-4ee6-46bc-90e5-cbfd5de496ac",
+      "name": "Parse Session"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -1920,
+        7504
+      ],
+      "id": "2e8ed139-c9cb-4139-bdf9-dc55f68dac1c",
+      "name": "Combine Update + Session"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n\nconst d = $input.first().json;\nconst text = (d.text || \"\").trim();\nconst state = d.state || \"idle\";\nlet route = \"fallback\";\n\n\nif (text === \"back\") {\n\n  switch (state) {\n\n    case \"idle\":\n      route = \"show_menu\";\n      break;\n\n    case \"upload_ds\":\n      route = \"prompt_upload\";\n      break;\n\n    case \"waiting_for_previous_selection\":\n      route = \"list_previous\";\n      break;\n\n    case \"dataset_menu\":\n      route = d.dataset_name ? \"select_previous\" : \"handle_upload\";\n      break;\n\n    case \"guess_plan\":\n      route = \"select_previous\";\n      break;\n\n    case \"waiting_target_column\":\n      route = \"train_recommended\";\n      break;\n\n    case \"waiting_problem_type\":\n      route = \"customize_start\";\n      break;\n\n    case \"waiting_models\": \n      route = \"pick_target\";\n      break;\n\n    case \"confirm_train\":\n      route = \"toggle_model\";\n      break;\n\n    case \"training\":\n      route = \"models_done\";\n      break;\n\n    default:\n      route = \"show_menu\";\n  }\n\n}\nelse if (d.isDocument && state === \"waiting_for_csv\")\n    route = \"handle_upload\";\n\nelse if (d.isDocument)\n    route = \"unexpected_file\";\n\nelse if (\n    text === \"start\" ||\n    text === \"/start\" ||\n    text === \"main menu\" ||\n    text === \"new\"\n)\n    route = \"show_menu\";\n\nelse if (\n    text === \"upload\" &&\n    (\n        state === \"idle\" ||\n        state === \"waiting_for_previous_selection\" ||\n        state === \"waiting_for_csv\"\n    )\n)\n    route = \"prompt_upload\";\n\nelse if (\n    text === \"previous\" &&\n    (\n        state === \"idle\" ||\n        state === \"waiting_for_previous_selection\" ||\n        state === \"waiting_for_csv\"\n    )\n)\n    route = \"list_previous\";\n\nelse if (\n    text !== \"\" &&\n    text !== \"upload\" &&\n    text !== \"previous\" &&\n    text !== \"help\" &&\n    state === \"waiting_for_previous_selection\"\n)\n    route = \"select_previous\";\n\nelse if (\n    state === \"dataset_menu\" &&\n    (text === \"train\" || text.startsWith(\"train\"))\n)\n    route = d.dataset_path ? \"train_recommended\" : \"no_dataset\";\n\nelse if (\n    text === \"customize\" &&\n    state === \"guess_plan\"\n)\n    route = d.dataset_path ? \"customize_start\" : \"no_dataset\";\n\nelse if (\n    text.startsWith(\"targetidx:\") &&\n    state === \"waiting_target_column\"\n)\n    route = \"pick_target\";\n\nelse if (\n    text.startsWith(\"ptype:\") &&\n    state === \"waiting_problem_type\"\n)\n    route = \"pick_problem_type\";\n\nelse if (\n    text.startsWith(\"togglemodelidx:\") &&\n    state === \"waiting_models\"\n)\n    route = \"toggle_model\";\n\nelse if (\n    text === \"models done\" &&\n    state === \"waiting_models\"\n)\n    route = \"models_done\";\n\nelse if (\n    text === \"confirm train\" &&\n    state === \"confirm_train\"\n)\n    route = \"confirm_yes\";\n\nelse if (\n    text === \"help\" ||\n    text === \"/help\"\n)\n    route = \"show_help\";\n\nreturn [{\n    json: {\n        ...d,\n        route\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1648,
+        7504
+      ],
+      "id": "b5a8c0ed-3dff-4218-b65c-ac777e8544c6",
+      "name": "Determine Route"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "show_menu",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-show_menu"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "show_menu"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "prompt_upload",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-prompt_upload"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "prompt_upload"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "list_previous",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-list_previous"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list_previous"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "select_previous",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-select_previous"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "select_previous"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "handle_upload",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-handle_upload"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "handle_upload"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "train_recommended",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-train_recommended"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "train_recommended"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "customize_start",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-customize_start"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "customize_start"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "pick_target",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-pick_target"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pick_target"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "pick_problem_type",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-pick_problem_type"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pick_problem_type"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "toggle_model",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-toggle_model"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "toggle_model"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "models_done",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-models_done"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "models_done"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "confirm_yes",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-confirm_yes"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "confirm_yes"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "no_dataset",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-no_dataset"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "no_dataset"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "show_help",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-show_help"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "show_help"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "unexpected_file",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-unexpected_file"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "unexpected_file"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "fallback",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c-fallback"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "fallback"
+            }
+          ]
+        },
+        "options": {
+          "allMatchingOutputs": false
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1408,
+        7280
+      ],
+      "id": "85bfa09a-87c6-4d70-9212-6ac5b6012fc0",
+      "name": "Route Switch"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "🤖 *Virtuoso AutoML*\n\nWhat would you like to do? The main menu is under process\nYou can write upload to upload a new dataset and previous to choose from the previous ones",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -672,
+        4992
+      ],
+      "id": "74e6d1e0-efdc-4e5b-9210-066061692e8f",
+      "name": "Send Menu",
+      "webhookId": "b2382203-5f25-422a-bb2b-e470639c6844",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { chatId: $('Determine Route').item.json.chatId, state:'idle',dataset_path:null,dataset_name:null,pending_files:[],columns:[],target_column:null,problem_type:null,available_models:[],selected_models:[] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        5184
+      ],
+      "id": "bd9c2ea0-f928-443e-8073-54f21995e6dd",
+      "name": "idle / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -448,
+        5184
+      ],
+      "id": "33196ed1-14c1-49f7-b85d-966e1f75407e",
+      "name": "idle / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('idle / Save Session').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -224,
+        5184
+      ],
+      "id": "2b1357cc-6482-461b-bf08-18fb0e0bf92c",
+      "name": "idle / Write Session"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "📤 Send your CSV file now — I'll wait right here for it.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -416,
+        5328
+      ],
+      "id": "784b1451-8c37-4e16-bd68-01f3be252fbe",
+      "name": "Send Upload Prompt",
+      "webhookId": "9742c371-85ca-47e2-b2dc-6609907788aa",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { chatId: $('Determine Route').item.json.chatId, state:'upload_dataset',dataset_path:null,dataset_name:null,pending_files:[],columns:[],target_column:null,problem_type:null,available_models:[],selected_models:[], state:'waiting_for_csv' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        5520
+      ],
+      "id": "aab41ed3-52c9-44eb-97c2-369da149fe30",
+      "name": "waitcsv / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -192,
+        5520
+      ],
+      "id": "49d15fd7-beb7-4111-8b77-2077efbae162",
+      "name": "waitcsv / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{\"/shared/sessions/\" + $(\"waitcsv / Save Session\").first().json.chatId + \".json\"}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        32,
+        5520
+      ],
+      "id": "0d3f63da-37c8-423e-9842-77ee2a1cd427",
+      "name": "waitcsv / Write Session"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/shared/uploads/*.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -432,
+        5952
+      ],
+      "id": "944ccebe-1868-4f8e-9bf0-86cb8a87e79d",
+      "name": "List CSV Files",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst files = items\n  .map(it => (it.binary && it.binary.data && it.binary.data.fileName) ? it.binary.data.fileName : null)\n  .filter(Boolean);\nreturn [{ json: { chatId: $('Determine Route').item.json.chatId, files, hasFiles: files.length > 0 } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        5936
+      ],
+      "id": "429c4245-50ce-42f2-bf7e-df0bcb599b4e",
+      "name": "Build File List"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{$json.hasFiles}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              },
+              "id": "c2"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        0,
+        5936
+      ],
+      "id": "b440e96d-cf8e-4f6b-be32-3c570368e103",
+      "name": "Has Files?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const files = $json.files || [];\n\nconst list = files.length\n  ? files.map((f, i) => `${i + 1}. ${f}`).join(\"\\n\")\n  : \"No datasets found.\";\n\nreturn [{\n  json: {\n    chatId: $json.chatId,\n    text:\n`📁 Available datasets:\n\n${list}\n\nReply with the dataset name exactly as shown.`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        5776
+      ],
+      "id": "3ed62401-f28f-4e97-89dc-2718bac36772",
+      "name": "Build File Buttons"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "={{$json.text}}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        432,
+        5648
+      ],
+      "id": "0283e5a7-ae22-4bc6-9b81-cffa27a4fc58",
+      "name": "Send File List",
+      "webhookId": "16074b24-20e7-41f1-89ff-72daa5874e66",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    chatId: $json.chatId,\n\n    state: \"waiting_for_previous_selection\",\n\n    dataset_path: null,\n    dataset_name: null,\n\n    pending_files: $('Has Files?').first().json.files,\n\n    columns: [],\n    target_column: null,\n    problem_type: null,\n    available_models: [],\n    selected_models: []\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        5776
+      ],
+      "id": "bffdaff1-41ea-4ff5-878e-6e2bec4489d8",
+      "name": "listprev / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        5776
+      ],
+      "id": "bec0fa00-22ba-4edd-b615-7eb1c1cdb8a9",
+      "name": "listprev / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('listprev / Save Session').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        5776
+      ],
+      "id": "792720d7-5d7f-4b36-aa61-b01e45e40888",
+      "name": "listprev / Write Session"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "📂 No previous datasets found yet. Type *upload* to add one.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        304,
+        5936
+      ],
+      "id": "0a998d6e-9197-4472-ac83-a4560bd6c0f7",
+      "name": "Send No Files",
+      "webhookId": "d3029265-09aa-4002-8d77-bcb1f8235d53",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { chatId: $json.chatId, state:'idle',dataset_path:null,dataset_name:null,pending_files:[],columns:[],target_column:null,problem_type:null,available_models:[],selected_models:[] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        6064
+      ],
+      "id": "58c1b420-e2a6-4281-a5f8-73430b5d8e27",
+      "name": "nofiles / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        6064
+      ],
+      "id": "6d80798d-bbbd-47bb-90cd-e5770ffac851",
+      "name": "nofiles / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('Has Files?').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        6064
+      ],
+      "id": "420c3a6d-9052-48d8-926f-086237dd94d9",
+      "name": "nofiles / Write Session"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst typed = String(d.rawText || d.text || \"\").trim().toLowerCase();\n\nconst files = d.pending_files || [];\n\nconst fileName = files.find(\n    f => f.toLowerCase() === typed\n);\n\nif (!fileName) {\n    return [{\n        json: {\n            chatId: d.chatId,\n            ok: false\n        }\n    }];\n}\n\nreturn [{\n    json: {\n        chatId: d.chatId,\n        ok: true,\n        dataset_name: fileName,\n        dataset_path: `/shared/uploads/${fileName}`\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        6160
+      ],
+      "id": "bd986a8d-d61f-4704-a87d-e3f14351677e",
+      "name": "Parse Selection"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "={{$json.ok ? ('✅ Selected *' + $json.dataset_name + '*. What next? train to satrt training and customizing the model or back to move back to the start menu') : '⚠️ That selection is no longer valid. Type previous to try again.'}}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -240,
+        6064
+      ],
+      "id": "83b2de8e-4f4e-4274-b321-d5b01450131a",
+      "name": "Send Selection Confirm",
+      "webhookId": "b3927c7a-494d-4ce9-8ec0-26b3977182db",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Parse Selection').item.json;\n\nreturn [\n{\n  json: {\n    chatId: d.chatId,\n\n    state: d.ok ? \"dataset_menu\" : \"waiting_for_previous_selection\",\n\n    dataset_path: d.ok\n      ? `/shared/uploads/${d.dataset_name}`\n      : null,\n\n    dataset_name: d.ok\n      ? d.dataset_name\n      : null,\n\n    pending_files: [],\n\n    columns: [],\n    target_column: null,\n    problem_type: null,\n    available_models: [],\n    selected_models: []\n  }\n}\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        6256
+      ],
+      "id": "f03b7b8d-fb17-4043-a62a-7458fe2dbb2b",
+      "name": "selected / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -16,
+        6256
+      ],
+      "id": "ad90c282-afdc-4bde-a05b-1538df0dc830",
+      "name": "selected / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('selected / Save Session').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        6256
+      ],
+      "id": "f61f4632-9500-4169-92c0-b1efe6944408",
+      "name": "selected / Write Session"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{$('Determine Route').item.json.fileId}}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -512,
+        6624
+      ],
+      "id": "d01507ce-13f0-4291-a026-7f367c412609",
+      "name": "Telegram Get File",
+      "webhookId": "508a6c1a-5f4c-4231-8d11-de1894d447e4",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/file/bot{{$credentials.telegramApi.token}}/{{$json.result.file_path}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "telegramApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2096,
+        6720
+      ],
+      "id": "59586bce-f126-4832-99e9-10ba76184dcb",
+      "name": "HTTP Download File",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/uploads/{{$('Determine Route').item.json.fileName}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -240,
+        6608
+      ],
+      "id": "f0c750b8-733d-4034-8efd-7fb07f996298",
+      "name": "Write Dataset To Disk"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$('Determine Route').item.json.chatId}}",
+        "text": "=✅ Dataset received: *{{$('Determine Route').item.json.fileName}}*. What next?",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        6496
+      ],
+      "id": "dc099677-1f64-4ad1-9ad4-dc65ff079fe2",
+      "name": "Send Upload Received",
+      "webhookId": "32906139-dbd5-4805-aa2b-7d74a909f825",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $('Determine Route').item.json;\nconst file = $('Determine Route').item.json.fileName;\n\nreturn [{\n  json: {\n    chatId: r.chatId,\n    state: \"dataset_menu\",\n\n    dataset_path: \"/shared/uploads/\" + file,\n    dataset_name: file,\n\n    pending_files: [],\n    columns: [],\n    target_column: null,\n    problem_type: null,\n    available_models: [],\n    selected_models: []\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        6688
+      ],
+      "id": "66813b08-3ebe-4034-9d0d-c860134c1fb2",
+      "name": "uploaded / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        6688
+      ],
+      "id": "bbcb4bcd-f2fa-45b1-acb3-a12b116abd7a",
+      "name": "uploaded / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('uploaded / Save Session').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        6688
+      ],
+      "id": "694323bc-de2b-4ac2-9ec9-c2a59ffe1d23",
+      "name": "uploaded / Write Session"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{$json.dataset_path}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -592,
+        6896
+      ],
+      "id": "f6fd015f-33e5-4618-823c-f9f22b372d6a",
+      "name": "Read Dataset File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\n\nif (!rows.length) {\n  throw new Error(\"Dataset is empty.\");\n}\n\nconst columns = Object.keys(rows[0]);\n\n// -------- Guess target column --------\n\nconst preferredTargets = [\n  \"converted\",\n  \"target\",\n  \"label\",\n  \"class\",\n  \"output\",\n  \"result\",\n  \"prediction\",\n  \"y\"\n];\n\nlet target_column =\ncolumns.find(c =>\n    preferredTargets.includes(c.toLowerCase())\n);\n\nif (!target_column) {\n    target_column = columns[columns.length - 1];\n}\n\n// -------- Guess problem type --------\n\nconst values = new Set();\n\nfor (const row of rows) {\n    values.add(String(row[target_column]));\n}\n\nconst uniqueCount = values.size;\n\nconst problem_type =\n(uniqueCount <= 20)\n?\n\"classification\"\n:\n\"regression\";\n\n// -------- Recommended models --------\n\nconst CLASS = [\n\"Random Forest\",\n\"Gradient Boosting\",\n\"Logistic Regression\"\n];\n\nconst REG = [\n\"Random Forest Regressor\",\n\"Gradient Boosting Regressor\",\n\"Linear Regression\"\n];\n\nconst selected_models =\nproblem_type === \"classification\"\n?\nCLASS\n:\nREG;\n\nreturn [{\njson:{\nchatId:$(\"Determine Route\").first().json.chatId,\n\ncolumns,\n\ntarget_column,\n\nproblem_type,\n\nselected_models,\n\ndataset_path:$(\"Determine Route\").first().json.dataset_path,\n\ndataset_name:$(\"Determine Route\").first().json.dataset_name\n}\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        6880
+      ],
+      "id": "62316c9d-b672-4dc0-a798-6af169c763f8",
+      "name": "Guess Plan"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "=📋 *Recommended plan*\n\nTarget column: `{{$json.target_column}}`\nProblem type: `{{$json.problem_type}}`\nModels: `{{$json.selected_models.join(', ')}}`\nTest split: 80/20\n\nType customize to change it ...",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        6832
+      ],
+      "id": "ae3eece9-00bb-4bca-a39a-fbb2977ef772",
+      "name": "Send Recommended Summary",
+      "webhookId": "c97ba62a-920c-43d0-a164-405da4f51279",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $(\"Guess Plan\").first().json;\n\nreturn [{\n    json: {\n        chatId: d.chatId,\n\n        state: \"guess_plan\",\n\n        dataset_path: d.dataset_path,\n        dataset_name: d.dataset_name,\n        columns: d.columns,\n        target_column: d.target_column,\n        problem_type: d.problem_type,\n        available_models: d.available_models || [],\n        selected_models: d.selected_models,\n        pending_files: []\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        6992
+      ],
+      "id": "c9a3b02a-43dc-481c-9073-a6aba78c354c",
+      "name": "recplan / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        6944
+      ],
+      "id": "dd4a960a-5ecd-4c84-a4b8-df4b72464983",
+      "name": "recplan / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('recplan / Save Session').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        6944
+      ],
+      "id": "755140bd-b353-48de-bf8e-30262e576be0",
+      "name": "recplan / Write Session"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{$json.dataset_path}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -464,
+        7216
+      ],
+      "id": "f0e9d130-b21d-4e57-8f59-089d735339fe",
+      "name": "Read Dataset File (Customize)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\n\nif (!rows.length) {\n    throw new Error(\"Dataset is empty.\");\n}\n\nconst columns = Object.keys(rows[0]);\n\nconst text =\n`🎯 Choose the target column\n\n${columns.map((c, i) => `${i + 1}. ${c}`).join(\"\\n\")}\n\n`;\n\nreturn [{\n    json: {\n        chatId: $(\"Determine Route\").first().json.chatId,\n        columns,\n        text\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        7216
+      ],
+      "id": "7b6d92ce-deb5-47d9-a2b4-ba22ea26fa1f",
+      "name": "Build Column Buttons"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "={{$json.text}}\nEg - targetidx:1   or targetidx:8   or targetidx:14",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        7136
+      ],
+      "id": "0197015b-cdb0-46a2-bac2-750a2e51a09c",
+      "name": "Send Column Picker",
+      "webhookId": "f4ef47be-5271-463b-a5c8-4b70a4030fa2",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $(\"Build Column Buttons\").first().json;\n\nreturn [{\n    json: {\n        chatId: d.chatId,\n\n        state: \"waiting_target_column\",\n\n        dataset_path: $(\"Determine Route\").first().json.dataset_path,\n\n        dataset_name: $(\"Determine Route\").first().json.dataset_name,\n\n        columns: d.columns,\n\n        target_column: null,\n\n        problem_type: null,\n\n        available_models: [],\n\n        selected_models: [],\n\n        pending_files: []\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        7328
+      ],
+      "id": "91fd6be3-f0cb-40e5-b1d4-25a43adf9c80",
+      "name": "waittarget / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        704,
+        7328
+      ],
+      "id": "228387f6-88b6-447e-83a9-b4f96b69cdb0",
+      "name": "waittarget / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('waittarget / Save Session').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        928,
+        7328
+      ],
+      "id": "6711e565-19e7-4a75-9555-d06b3e3910ef",
+      "name": "waittarget / Write Session"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst text = String(d.text || \"\").trim();\n\nif (!text.startsWith(\"targetidx:\")) {\n    return [{\n        json: d\n    }];\n}\n\nconst idx = parseInt(\n    text.split(\":\")[1],\n    10\n);\n\nif (\n    Number.isNaN(idx) ||\n    idx < 1 ||\n    idx > (d.columns || []).length\n) {\n    return [{\n        json: {\n            ...d,\n            error: \"Invalid target index.\"\n        }\n    }];\n}\n\nreturn [{\n    json: {\n        ...d,\n        target_column: d.columns[idx - 1]\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        7504
+      ],
+      "id": "9bc6fd73-6b65-437e-971e-8871541e6dd5",
+      "name": "Parse Target"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "=📊 Target set to `{{$json.target_column}}`. \nNow, What kind of problem is this?\neg: Classification or Regression\n\nAlso make sure you reply exactly like this (including \"ptype: \" )\nlike ptype: Regression  or ptype: Classification",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -240,
+        7408
+      ],
+      "id": "c66df1cd-5b53-4567-bee0-f4fb47b6be6f",
+      "name": "Send Problem Type Picker",
+      "webhookId": "f37bf050-fe27-40bb-b5f5-a03ad0b17712",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('Parse Target').item.json; return [{ json: { chatId:d.chatId, state:'waiting_problem_type', dataset_path:d.dataset_path, dataset_name:d.dataset_name, columns:d.columns, target_column:d.target_column, available_models:[], selected_models:[], pending_files:[] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        7600
+      ],
+      "id": "13708197-3074-4c41-9023-13cd80fa1aa9",
+      "name": "waitptype / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -16,
+        7600
+      ],
+      "id": "71aa9aea-0d27-4c8e-8c2a-8c19db659e48",
+      "name": "waitptype / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('waitptype / Save Session').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        7600
+      ],
+      "id": "f387da53-d918-4615-8c74-edb770ff5c60",
+      "name": "waitptype / Write Session"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst problem_type = String(d.text)\n    .split(\":\")[1]\n    .trim()\n    .toLowerCase();\n\nconst CLASS = [\n    \"Random Forest\",\n    \"Gradient Boosting\",\n    \"Logistic Regression\",\n    \"Decision Tree\",\n    \"AdaBoost\",\n    \"Naive Bayes\",\n    \"Support Vector Machine\",\n    \"KNN\",\n    \"Neural Network\"\n];\n\nconst REG = [\n    \"Random Forest Regressor\",\n    \"Gradient Boosting Regressor\",\n    \"Linear Regression\",\n    \"Ridge Regression\",\n    \"Lasso Regression\",\n    \"Decision Tree Regressor\",\n    \"Support Vector Regressor\",\n    \"KNN Regressor\"\n];\n\nconst available_models =\n    problem_type === \"classification\"\n        ? CLASS\n        : REG;\n\nreturn [{\n    json: {\n        ...d,\n        problem_type,\n        available_models,\n        selected_models: []\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        7888
+      ],
+      "id": "a1f40680-adb8-4e4e-a6e2-a86edf736a15",
+      "name": "Parse Problem Type"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst avail = d.available_models || [];\nconst sel = d.selected_models || [];\nconst rows = avail.map((m, i) => ({\n  row: { buttons: [{ text: (sel.includes(m) ? \"\\u2705 \" : \"\\u2b1c \") + m, additionalFields: { callback_data: \"toggle_model_idx:\" + i } }] }\n}));\nrows.push({ row: { buttons: [{ text: \"\\u2714\\ufe0f Done\", additionalFields: { callback_data: \"models_done\" } }] } });\nreturn [{ json: { ...d, rows } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        7888
+      ],
+      "id": "d0aa902d-18b0-465a-874f-6f6b7e14d02f",
+      "name": "Build Model Keyboard"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "=🧩 Pick the models you want to train.\n\n🧠 Available Models\n\n{{ $json.available_models.map((m,i)=>`${i}. ${m}`).join('\\n') }}\n\n\nTo select a model type:\n\ntogglemodelidx:0\n\nExample:\n\ntogglemodelidx:2\n\nYou can select multiple models.\njust type 1 after the other wait for the model to respond after each model select\n\nWhen finished type:\n\nmodelsdone",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        7792
+      ],
+      "id": "f77379f0-a34a-4ba7-803d-5994b6b6c175",
+      "name": "Send Model Picker",
+      "webhookId": "2d16ffa0-5fc7-4121-9420-d1bef8253655",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('Build Model Keyboard').item.json; return [{ json: { chatId:d.chatId, state:'waiting_models', dataset_path:d.dataset_path, dataset_name:d.dataset_name, columns:d.columns, target_column:d.target_column, problem_type:d.problem_type, available_models:d.available_models, selected_models:d.selected_models, pending_files:[] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        7984
+      ],
+      "id": "2ac06965-bfcf-416b-9dd4-24e4a6991513",
+      "name": "waitmodels / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        7984
+      ],
+      "id": "fdfbe248-94cd-4fd7-8da7-03ad900a9395",
+      "name": "waitmodels / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('waitmodels / Save Session').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        7984
+      ],
+      "id": "ba8e80d9-5ff8-44b2-82b1-0accb39ccc6b",
+      "name": "waitmodels / Write Session"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst text = String(d.text || \"\").trim();\n\nconst idx = Number(text.replace(\"togglemodelidx:\", \"\"));\n\nconst available = d.available_models || [];\n\nif (\n    Number.isNaN(idx) ||\n    idx < 0 ||\n    idx >= available.length\n) {\n    return [{\n        json: {\n            ...d,\n            error: \"Invalid model selection.\"\n        }\n    }];\n}\n\nconst model = available[idx];\n\nlet selected = [...(d.selected_models || [])];\n\nif (selected.includes(model)) {\n    selected = selected.filter(m => m !== model);\n} else {\n    selected.push(model);\n}\n\nreturn [{\n    json: {\n        ...d,\n        selected_models: selected\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        8272
+      ],
+      "id": "1e61fabc-ef2b-45e6-bfe2-6e9b613592c5",
+      "name": "Toggle Model"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst available = d.available_models || [];\nconst selected = d.selected_models || [];\n\nconst modelList = available\n    .map((m, i) => {\n        const mark = selected.includes(m) ? \"✅\" : \"⬜\";\n        return `${mark} ${i}. ${m}`;\n    })\n    .join(\"\\n\");\n\nreturn [{\n    json: {\n        ...d,\n        modelList\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        8272
+      ],
+      "id": "b8ad86dd-c5d1-49f8-9d1a-3440469b97af",
+      "name": "Rebuild Model Keyboard"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "=🧩 Pick the models to try, then tap Done.\nSelected: {{$json.selected_models.length ? $json.selected_models.join(', ') : 'none yet'}}\n\nTo continue selecting the models repeat by typing togglemodelidx: index\n\nIf done with the models selection then type \"models done\"\n\n",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -16,
+        8176
+      ],
+      "id": "31e4b1f8-64a6-4871-a835-b44071af2a18",
+      "name": "Edit Model Picker",
+      "webhookId": "93d43030-4a98-42bc-b2ad-c6bf752e0548",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('Rebuild Model Keyboard').item.json; return [{ json: { chatId:d.chatId, state:'waiting_models', dataset_path:d.dataset_path, dataset_name:d.dataset_name, columns:d.columns, target_column:d.target_column, problem_type:d.problem_type, available_models:d.available_models, selected_models:d.selected_models, pending_files:[] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        8368
+      ],
+      "id": "a9ca6d40-ce36-429c-b01d-7a945ff9e992",
+      "name": "toggled / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        8368
+      ],
+      "id": "8c8cde46-aa10-4f2f-8518-23269dd27d2d",
+      "name": "toggled / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('toggled / Save Session').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        8368
+      ],
+      "id": "9e5e33f3-cf46-4280-8da6-38a6f6d4c722",
+      "name": "toggled / Write Session"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst selected = (d.selected_models && d.selected_models.length) ? d.selected_models : (d.available_models || []).slice(0, 3);\nreturn [{ json: { ...d, selected_models: selected } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        8592
+      ],
+      "id": "238181f2-ea8d-4b12-92b9-54c2d50b8f8e",
+      "name": "Finalize Models"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "=📋 *Your plan*\n\nTarget column: `{{$json.target_column}}`\nProblem type: `{{$json.problem_type}}`\nModels: `{{$json.selected_models.join(', ')}}`\nTest split: 80/20\n\nConfirm? By typing \"confirm train\" to start training of the model",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -240,
+        8464
+      ],
+      "id": "56afa35f-bb79-4b34-b5a4-67ee60380cbd",
+      "name": "Send Confirm Summary",
+      "webhookId": "4762383a-c546-43df-8e9c-df2aa6cc07aa",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('Finalize Models').item.json; return [{ json: { chatId:d.chatId, state:'confirm_train', dataset_path:d.dataset_path, dataset_name:d.dataset_name, columns:d.columns, target_column:d.target_column, problem_type:d.problem_type, available_models:d.available_models, selected_models:d.selected_models, pending_files:[] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        8656
+      ],
+      "id": "4d829319-661d-4761-acc3-caa12b313559",
+      "name": "confirmready / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        8656
+      ],
+      "id": "66c46d86-be44-4e8e-b0d8-c207afbd0668",
+      "name": "confirmready / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('confirmready / Save Session').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        8656
+      ],
+      "id": "91e7813f-35fe-4246-b0ce-febc61b60f56",
+      "name": "confirmready / Write Session"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "=🚀 Training started for *{{$('Determine Route').item.json.dataset_name}}*. I'll send results here when it's done.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -464,
+        8848
+      ],
+      "id": "af189bd0-9e10-4f42-b0a8-db556ad40c37",
+      "name": "Send Training Started",
+      "webhookId": "a68bd22e-8667-494d-936f-34081ab48d46",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "yxvcXMb15ostJ7Tx",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/yxvcXMb15ostJ7Tx",
+          "cachedResultName": "Analyze & Train Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -32,
+        8848
+      ],
+      "id": "4fff6b73-e72c-4bb4-8110-1f369d7ab53c",
+      "name": "Call Analyze & Train Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('Determine Route').item.json; return [{ json: { chatId:d.chatId, state:'training', dataset_path:d.dataset_path, dataset_name:d.dataset_name, columns:d.columns, target_column:d.target_column, problem_type:d.problem_type, available_models:d.available_models, selected_models:d.selected_models, pending_files:[] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        8848
+      ],
+      "id": "f6f1203a-6901-4590-a45d-dc9d8b83fe52",
+      "name": "training / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        8848
+      ],
+      "id": "c32ebbb3-3436-41d6-bd1e-614edc7c3023",
+      "name": "training / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('training / Save Session').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        8848
+      ],
+      "id": "69867059-e176-4b56-800a-bb085cb38c7a",
+      "name": "training / Write Session"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "⚠️ No dataset selected yet. Type *upload* or *previous* first.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -912,
+        8832
+      ],
+      "id": "3d544f98-693e-4838-bef4-2c4fd36bbc14",
+      "name": "Send No Dataset",
+      "webhookId": "d67ab0d3-5ff4-4ab3-a9f9-6450e6d69c9b",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "🤖 *Virtuoso AutoML - Commands*\n\n▶ start - show the main menu   (under process)\n▶ upload - send a new CSV dataset\n▶ previous - pick a dataset you've used before\n▶ help - show this message\n\nOnce a dataset is selected you can move through each step to train with recommended settings or customize the run. ",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -912,
+        9024
+      ],
+      "id": "433ac741-c8dd-4ad7-bf73-c11cf921c3cf",
+      "name": "Send Help",
+      "webhookId": "6d9f0229-92bb-4b09-b236-8f488ff758a1",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "📎 I got a file, but I'm not expecting one right now. Type *upload* first.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -912,
+        9216
+      ],
+      "id": "68cf48a9-f568-438c-b002-2da7be33ed95",
+      "name": "Send Unexpected File",
+      "webhookId": "ede95658-2d60-4f6f-876e-c08033c3f96d",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "🤔 I didn't quite catch that. Type *help* to see available commands.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -912,
+        9408
+      ],
+      "id": "451b247b-a004-44fc-8b76-e61f6a5d2ef2",
+      "name": "Send Fallback",
+      "webhookId": "f863a8f3-7fe8-442c-96db-e26865657373",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {
+          "encoding": "utf8"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -2128,
+        7280
+      ],
+      "id": "a20ae342-b485-4d74-8c25-5dcaf9183a86",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$credentials.telegramApi.token}}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  chat_id: $json.chatId,\n  text: $json.text,\n  parse_mode: \"Markdown\",\n  reply_markup: $json.keyboard\n}\n}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1968,
+        6416
+      ],
+      "id": "fc0154ff-90dc-4b87-bc17-ccff8b9bb853",
+      "name": "send http msg telegram"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -384,
+        6896
+      ],
+      "id": "9512076a-28f4-437b-99dc-0fb12ce32d03",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -256,
+        7216
+      ],
+      "id": "79fe42c8-684c-404a-a990-3b7222540e16",
+      "name": "Extract from File2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const s = $(\"Determine Route\").first().json;\n\nconst payload = {\n  chatId: s.chatId,\n\n  dataset_path: s.dataset_path,\n  dataset_name: s.dataset_name,\n\n  problem_type: s.problem_type,\n  target_column: s.target_column,\n\n  models: s.selected_models,\n\n  test_size: 0.2,\n  random_state: 42,\n\n  confidence: 1.0,\n\n  visualizations: [\n    \"confusion_matrix\",\n    \"feature_importance\",\n    \"roc_curve\"\n  ]\n};\n\nreturn [{\n  json: {\n    chatInput: JSON.stringify(payload)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        8848
+      ],
+      "id": "1c87374d-3b7b-4164-863c-1827554fb591",
+      "name": "Prepare Training"
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Update": {
+      "main": [
+        [
+          {
+            "node": "Is Callback?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Combine Update + Session",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Session File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Callback?": {
+      "main": [
+        [
+          {
+            "node": "Answer Callback Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Session File": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Session": {
+      "main": [
+        [
+          {
+            "node": "Combine Update + Session",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Combine Update + Session": {
+      "main": [
+        [
+          {
+            "node": "Determine Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Determine Route": {
+      "main": [
+        [
+          {
+            "node": "Route Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Switch": {
+      "main": [
+        [
+          {
+            "node": "Send Menu",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "idle / Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Upload Prompt",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "waitcsv / Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "List CSV Files",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Selection",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram Get File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read Dataset File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read Dataset File (Customize)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Target",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Problem Type",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Toggle Model",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finalize Models",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Training Started",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send No Dataset",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Help",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Unexpected File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "idle / Save Session": {
+      "main": [
+        [
+          {
+            "node": "idle / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "idle / To File": {
+      "main": [
+        [
+          {
+            "node": "idle / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "waitcsv / Save Session": {
+      "main": [
+        [
+          {
+            "node": "waitcsv / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "waitcsv / To File": {
+      "main": [
+        [
+          {
+            "node": "waitcsv / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List CSV Files": {
+      "main": [
+        [
+          {
+            "node": "Build File List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build File List": {
+      "main": [
+        [
+          {
+            "node": "Has Files?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Files?": {
+      "main": [
+        [
+          {
+            "node": "Build File Buttons",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send No Files",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "nofiles / Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build File Buttons": {
+      "main": [
+        [
+          {
+            "node": "listprev / Save Session",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send File List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "listprev / Save Session": {
+      "main": [
+        [
+          {
+            "node": "listprev / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "listprev / To File": {
+      "main": [
+        [
+          {
+            "node": "listprev / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "nofiles / Save Session": {
+      "main": [
+        [
+          {
+            "node": "nofiles / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "nofiles / To File": {
+      "main": [
+        [
+          {
+            "node": "nofiles / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Selection": {
+      "main": [
+        [
+          {
+            "node": "Send Selection Confirm",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "selected / Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "selected / Save Session": {
+      "main": [
+        [
+          {
+            "node": "selected / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "selected / To File": {
+      "main": [
+        [
+          {
+            "node": "selected / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Get File": {
+      "main": [
+        [
+          {
+            "node": "Write Dataset To Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Download File": {
+      "main": [
+        []
+      ]
+    },
+    "Write Dataset To Disk": {
+      "main": [
+        [
+          {
+            "node": "Send Upload Received",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "uploaded / Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uploaded / Save Session": {
+      "main": [
+        [
+          {
+            "node": "uploaded / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uploaded / To File": {
+      "main": [
+        [
+          {
+            "node": "uploaded / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Dataset File": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guess Plan": {
+      "main": [
+        [
+          {
+            "node": "Send Recommended Summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "recplan / Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "recplan / Save Session": {
+      "main": [
+        [
+          {
+            "node": "recplan / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "recplan / To File": {
+      "main": [
+        [
+          {
+            "node": "recplan / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Dataset File (Customize)": {
+      "main": [
+        [
+          {
+            "node": "Extract from File2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Column Buttons": {
+      "main": [
+        [
+          {
+            "node": "Send Column Picker",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "waittarget / Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "waittarget / Save Session": {
+      "main": [
+        [
+          {
+            "node": "waittarget / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "waittarget / To File": {
+      "main": [
+        [
+          {
+            "node": "waittarget / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Target": {
+      "main": [
+        [
+          {
+            "node": "Send Problem Type Picker",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "waitptype / Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "waitptype / Save Session": {
+      "main": [
+        [
+          {
+            "node": "waitptype / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "waitptype / To File": {
+      "main": [
+        [
+          {
+            "node": "waitptype / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Problem Type": {
+      "main": [
+        [
+          {
+            "node": "Build Model Keyboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Model Keyboard": {
+      "main": [
+        [
+          {
+            "node": "Send Model Picker",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "waitmodels / Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "waitmodels / Save Session": {
+      "main": [
+        [
+          {
+            "node": "waitmodels / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "waitmodels / To File": {
+      "main": [
+        [
+          {
+            "node": "waitmodels / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Toggle Model": {
+      "main": [
+        [
+          {
+            "node": "Rebuild Model Keyboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rebuild Model Keyboard": {
+      "main": [
+        [
+          {
+            "node": "Edit Model Picker",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "toggled / Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "toggled / Save Session": {
+      "main": [
+        [
+          {
+            "node": "toggled / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "toggled / To File": {
+      "main": [
+        [
+          {
+            "node": "toggled / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Models": {
+      "main": [
+        [
+          {
+            "node": "Send Confirm Summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "confirmready / Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "confirmready / Save Session": {
+      "main": [
+        [
+          {
+            "node": "confirmready / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "confirmready / To File": {
+      "main": [
+        [
+          {
+            "node": "confirmready / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Training Started": {
+      "main": [
+        [
+          {
+            "node": "Prepare Training",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Analyze & Train Workflow": {
+      "main": [
+        [
+          {
+            "node": "training / Save Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "training / Save Session": {
+      "main": [
+        [
+          {
+            "node": "training / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "training / To File": {
+      "main": [
+        [
+          {
+            "node": "training / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Parse Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send http msg telegram": {
+      "main": [
+        []
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Guess Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File2": {
+      "main": [
+        [
+          {
+            "node": "Build Column Buttons",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Training": {
+      "main": [
+        [
+          {
+            "node": "Call Analyze & Train Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "62f1f1a6e702c198d04d70447022373f1d8ac30f2f895a3697f10ae527b226a8"
+  }
+}
