@@ -17,7 +17,7 @@ Users simply upload a dataset through Telegram, and Virtuoso automatically:
 
 # 🚀 System Architecture
 
-Virtuoso follows a containerized microservice architecture.
+It follows a containerized microservice architecture.
 
 ```
                     Telegram
@@ -126,17 +126,6 @@ Supported preprocessing includes
 
 ---
 
-## Automatic Problem Detection
-
-Virtuoso determines whether the selected target represents
-
-- Classification
-- Regression
-
-based on the target column selected by the user.
-
----
-
 # 🤖 Supported Models
 
 ## Classification
@@ -168,7 +157,7 @@ based on the target column selected by the user.
 
 # 📊 Evaluation Metrics
 
-Depending on the problem type, Virtuoso computes
+Depending on the problem type, It computes
 
 Classification
 
@@ -188,7 +177,7 @@ Regression
 
 # 📈 Generated Artifacts
 
-Virtuoso automatically generates
+Model automatically generates
 
 - Confusion Matrix
 - ROC Curve
@@ -331,7 +320,7 @@ It performs
 # 📂 Project Structure
 
 ```
-Virtuoso/
+Virtuoso_Project/
 
 │
 ├── auto_ml/
@@ -420,45 +409,6 @@ analyze_train_workflow.json
 
 5. Configure your Telegram credentials.
 
----
-
-# 📸 Screenshots
-
-Add screenshots in the `assets/` directory.
-
-Suggested screenshots:
-
-```
-assets/
-│
-├── architecture.png
-├── telegram-chat.png
-├── telegram-workflow.png
-├── training-workflow.png
-├── model-results.png
-├── confusion-matrix.png
-└── roc-curve.png
-```
-
-Example:
-
-```markdown
-## Telegram Conversation
-
-![Telegram Chat](assets/telegram-chat.png)
-
-## Main Workflow
-
-![Workflow](assets/telegram-workflow.png)
-
-## Training Workflow
-
-![Training](assets/training-workflow.png)
-
-## Results
-
-![Results](assets/model-results.png)
-```
 
 ---
 
@@ -466,6 +416,7 @@ Example:
 
 - Hyperparameter Optimization
 - Cross Validation
+- User driven customization in model training 
 - Explainable AI (SHAP)
 - Time Series Forecasting
 - XGBoost
