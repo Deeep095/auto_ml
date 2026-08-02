@@ -442,9 +442,3 @@ analyze_train_workflow.json
 
 ---
 
-# 👨‍💻 Author
-
-**Deepanshu Jain**
-
-B.Tech Computer Science & Engineering  
-The LNM Institute of Information Technology (LNMIIT)
