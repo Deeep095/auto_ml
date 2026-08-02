@@ -1,8 +1,8 @@
-# 🤖 Virtuoso AutoML
+# 🤖 AutoML
 
-Virtuoso AutoML is a production-grade **Telegram-based AutoML Assistant** that enables users to build and evaluate machine learning models without writing code.
+AutoML is a production-grade **Telegram-based AutoML Assistant** that enables users to build and evaluate machine learning models without writing code.
 
-Users simply upload a dataset through Telegram, and Virtuoso automatically:
+Users simply upload a dataset through Telegram, and AutoML automatically:
 
 - 📂 Uploads and manages datasets
 - 📊 Analyzes the data
@@ -320,7 +320,7 @@ It performs
 # 📂 Project Structure
 
 ```
-Virtuoso_Project/
+AutoML_Project/
 
 │
 ├── auto_ml/
