@@ -144,7 +144,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\n\nconst d = $input.first().json;\nconst text = (d.text || \"\").trim();\nconst state = d.state || \"idle\";\nlet route = \"fallback\";\n\n\nif (text === \"back\") {\n\n  switch (state) {\n\n    case \"idle\":\n      route = \"show_menu\";\n      break;\n\n    case \"upload_ds\":\n      route = \"prompt_upload\";\n      break;\n\n    case \"waiting_for_previous_selection\":\n      route = \"list_previous\";\n      break;\n\n    case \"dataset_menu\":\n      route = d.dataset_name ? \"select_previous\" : \"handle_upload\";\n      break;\n\n    case \"guess_plan\":\n      route = \"select_previous\";\n      break;\n\n    case \"waiting_target_column\":\n      route = \"train_recommended\";\n      break;\n\n    case \"waiting_problem_type\":\n      route = \"customize_start\";\n      break;\n\n    case \"waiting_models\": \n      route = \"pick_target\";\n      break;\n\n    case \"confirm_train\":\n      route = \"toggle_model\";\n      break;\n\n    case \"training\":\n      route = \"models_done\";\n      break;\n\n    default:\n      route = \"show_menu\";\n  }\n\n}\nelse if (d.isDocument && state === \"waiting_for_csv\")\n    route = \"handle_upload\";\n\nelse if (d.isDocument)\n    route = \"unexpected_file\";\n\nelse if (\n    text === \"start\" ||\n    text === \"/start\" ||\n    text === \"main menu\" ||\n    text === \"new\"\n)\n    route = \"show_menu\";\n\nelse if (\n    text === \"upload\" &&\n    (\n        state === \"idle\" ||\n        state === \"waiting_for_previous_selection\" ||\n        state === \"waiting_for_csv\"\n    )\n)\n    route = \"prompt_upload\";\n\nelse if (\n    text === \"previous\" &&\n    (\n        state === \"idle\" ||\n        state === \"waiting_for_previous_selection\" ||\n        state === \"waiting_for_csv\"\n    )\n)\n    route = \"list_previous\";\n\nelse if (\n    text !== \"\" &&\n    text !== \"upload\" &&\n    text !== \"previous\" &&\n    text !== \"help\" &&\n    state === \"waiting_for_previous_selection\"\n)\n    route = \"select_previous\";\n\nelse if (\n    state === \"dataset_menu\" &&\n    (text === \"train\" || text.startsWith(\"train\"))\n)\n    route = d.dataset_path ? \"train_recommended\" : \"no_dataset\";\n\nelse if (\n    text === \"customize\" &&\n    state === \"guess_plan\"\n)\n    route = d.dataset_path ? \"customize_start\" : \"no_dataset\";\n\nelse if (\n    text.startsWith(\"targetidx:\") &&\n    state === \"waiting_target_column\"\n)\n    route = \"pick_target\";\n\nelse if (\n    text.startsWith(\"ptype:\") &&\n    state === \"waiting_problem_type\"\n)\n    route = \"pick_problem_type\";\n\nelse if (\n    text.startsWith(\"togglemodelidx:\") &&\n    state === \"waiting_models\"\n)\n    route = \"toggle_model\";\n\nelse if (\n    text === \"models done\" &&\n    state === \"waiting_models\"\n)\n    route = \"models_done\";\n\nelse if (\n    text === \"confirm train\" &&\n    state === \"confirm_train\"\n)\n    route = \"confirm_yes\";\n\nelse if (\n    text === \"help\" ||\n    text === \"/help\"\n)\n    route = \"show_help\";\n\nreturn [{\n    json: {\n        ...d,\n        route\n    }\n}];"
+        "jsCode": "\n\nconst d = $input.first().json;\nconst text = (d.text || \"\").trim();\nconst state = d.state || \"idle\";\nlet route = \"fallback\";\n\n\nif (text === \"back\") {\n\n  switch (state) {\n\n    case \"idle\":\n      route = \"show_menu\";\n      break;\n\n    case \"upload_ds\":\n      route = \"prompt_upload\";\n      break;\n\n    case \"waiting_for_previous_selection\":\n      route = \"list_previous\";\n      break;\n\n    case \"dataset_menu\":\n      route = d.dataset_name ? \"select_previous\" : \"handle_upload\";\n      break;\n\n    case \"guess_plan\":\n      route = \"select_previous\";\n      break;\n\n    case \"waiting_target_column\":\n      route = \"train_recommended\";\n      break;\n\n    case \"waiting_problem_type\":\n      route = \"customize_start\";\n      break;\n\n    case \"waiting_models\": \n      route = \"pick_target\";\n      break;\n\n    case \"HP_train\":\n      route = \"train_recommended\";\n      break;\n\n    case \"HP_user_wait\":\n        route = \"models_done\";\n        break;\n    \n    case \"confirm_train\":\n        route = \"HP_train\";\n        break;\n    \n    case \"training\":\n        route = \"confirm_train\";\n        break;\n\n    case \"confirm_train\":\n      route = \"toggle_model\";\n      break;\n\n    // case \"training\":\n    //   route = \"models_done\";\n    //   break;\n\n    default:\n      route = \"show_menu\";\n  }\n\n}\nelse if (d.isDocument && state === \"waiting_for_csv\")\n    route = \"handle_upload\";\n\nelse if (d.isDocument)\n    route = \"unexpected_file\";\n\nelse if (\n    text === \"start\" ||\n    text === \"/start\" ||\n    text === \"main menu\" ||\n    text === \"new\"\n)\n    route = \"show_menu\";\n\nelse if (\n    text === \"upload\" &&\n    (\n        state === \"idle\" ||\n        state === \"waiting_for_previous_selection\" ||\n        state === \"waiting_for_csv\"\n    )\n)\n    route = \"prompt_upload\";\n\nelse if (\n    text === \"previous\" &&\n    (\n        state === \"idle\" ||\n        state === \"waiting_for_previous_selection\" ||\n        state === \"waiting_for_csv\"\n    )\n)\n    route = \"list_previous\";\n\nelse if (\n    text !== \"\" &&\n    text !== \"upload\" &&\n    text !== \"previous\" &&\n    text !== \"help\" &&\n    state === \"waiting_for_previous_selection\"\n)\n    route = \"select_previous\";\n\nelse if (\n    state === \"dataset_menu\" &&\n    (text === \"train\" || text.startsWith(\"train\"))\n)\n    route = d.dataset_path ? \"train_recommended\" : \"no_dataset\";\n\nelse if (\n    text === \"customize\" &&\n    state === \"guess_plan\"\n)\n    route = d.dataset_path ? \"customize_start\" : \"no_dataset\";\n\nelse if (\n    text.startsWith(\"targetidx:\") &&\n    state === \"waiting_target_column\"\n)\n    route = \"pick_target\";\n\nelse if (\n    text.startsWith(\"ptype:\") &&\n    state === \"waiting_problem_type\"\n)\n    route = \"pick_problem_type\";\n\nelse if (\n    text.startsWith(\"togglemodelidx:\") &&\n    state === \"waiting_models\"\n)\n    route = \"toggle_model\";\n\nelse if (\n    text === \"models done\" &&\n    state === \"waiting_models\"\n)\n    route = \"models_done\";\n\nelse if (\n    text === \"hp train\" &&\n    state === \"HP_train\"\n)\n    route = \"HP_train\";\n\nelse if (\n    text === \"no\" &&\n    state === \"HP_train\"\n)\n    route = \"HP_ai\";\n\nelse if (\n    state === \"HP_user_wait\" &&\n    text !== \"\" &&\n    text.toLowerCase() !== \"back\"\n)\n    route = \"HP_ai\";\n\nelse if (\n    text === \"confirm train\" &&\n    state === \"confirm_train\"\n)\n    route = \"confirm_yes\";\n\n// else if (\n//     (text === \"confirm train\" &&\n//     state === \"confirm_train\")||(text === \"No\" && state === \"HP_user_wait\")\n// )\n//     route = \"confirm_yes\";\n\nelse if (\n    text === \"help\" ||\n    text === \"/help\"\n)\n    route = \"show_help\";\n\nreturn [{\n    json: {\n        ...d,\n        route\n    }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -422,6 +422,56 @@
               },
               "renameOutput": true,
               "outputKey": "models_done"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "f5ff8828-76ad-4ff6-8bff-c375d7c7c04f",
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "HP_train",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "HP_train"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "edc73c3e-f3e0-4141-96b3-35eff0d254b3",
+                    "leftValue": "={{$json.route}}",
+                    "rightValue": "HP_ai",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "HP_ai"
             },
             {
               "conditions": {
@@ -775,14 +825,15 @@
         "chatId": "={{$json.chatId}}",
         "text": "={{$json.text}}",
         "additionalFields": {
-          "appendAttribution": false
+          "appendAttribution": false,
+          "parse_mode": "HTML"
         }
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
         432,
-        5648
+        5632
       ],
       "id": "0283e5a7-ae22-4bc6-9b81-cffa27a4fc58",
       "name": "Send File List",
@@ -1600,86 +1651,17 @@
     {
       "parameters": {
         "chatId": "={{$json.chatId}}",
-        "text": "=📋 *Your plan*\n\nTarget column: `{{$json.target_column}}`\nProblem type: `{{$json.problem_type}}`\nModels: `{{$json.selected_models.join(', ')}}`\nTest split: 80/20\n\nConfirm? By typing \"confirm train\" to start training of the model",
-        "additionalFields": {
-          "appendAttribution": false,
-          "parse_mode": "Markdown"
-        }
-      },
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        -240,
-        8464
-      ],
-      "id": "56afa35f-bb79-4b34-b5a4-67ee60380cbd",
-      "name": "Send Confirm Summary",
-      "webhookId": "4762383a-c546-43df-8e9c-df2aa6cc07aa",
-      "credentials": {
-        "telegramApi": {
-          "id": "PXnVFLOJ0AOxaqFm",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const d=$('Finalize Models').item.json; return [{ json: { chatId:d.chatId, state:'confirm_train', dataset_path:d.dataset_path, dataset_name:d.dataset_name, columns:d.columns, target_column:d.target_column, problem_type:d.problem_type, available_models:d.available_models, selected_models:d.selected_models, pending_files:[] } }];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -32,
-        8656
-      ],
-      "id": "4d829319-661d-4761-acc3-caa12b313559",
-      "name": "confirmready / Save Session"
-    },
-    {
-      "parameters": {
-        "operation": "toJson",
-        "options": {
-          "fileName": "session.json"
-        }
-      },
-      "type": "n8n-nodes-base.convertToFile",
-      "typeVersion": 1.1,
-      "position": [
-        192,
-        8656
-      ],
-      "id": "66c46d86-be44-4e8e-b0d8-c207afbd0668",
-      "name": "confirmready / To File"
-    },
-    {
-      "parameters": {
-        "operation": "write",
-        "fileName": "=/shared/sessions/{{$('confirmready / Save Session').first().json.chatId}}.json",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.readWriteFile",
-      "typeVersion": 1.1,
-      "position": [
-        416,
-        8656
-      ],
-      "id": "91e7813f-35fe-4246-b0ce-febc61b60f56",
-      "name": "confirmready / Write Session"
-    },
-    {
-      "parameters": {
-        "chatId": "={{$json.chatId}}",
         "text": "=🚀 Training started for *{{$('Determine Route').item.json.dataset_name}}*. I'll send results here when it's done.",
         "additionalFields": {
           "appendAttribution": false,
-          "parse_mode": "Markdown"
+          "parse_mode": "HTML"
         }
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        -464,
-        8848
+        -432,
+        9376
       ],
       "id": "af189bd0-9e10-4f42-b0a8-db556ad40c37",
       "name": "Send Training Started",
@@ -1716,8 +1698,8 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        -32,
-        8848
+        0,
+        9376
       ],
       "id": "4fff6b73-e72c-4bb4-8110-1f369d7ab53c",
       "name": "Call Analyze & Train Workflow"
@@ -1729,8 +1711,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        192,
-        8848
+        224,
+        9376
       ],
       "id": "f6f1203a-6901-4590-a45d-dc9d8b83fe52",
       "name": "training / Save Session"
@@ -1745,8 +1727,8 @@
       "type": "n8n-nodes-base.convertToFile",
       "typeVersion": 1.1,
       "position": [
-        416,
-        8848
+        448,
+        9376
       ],
       "id": "c32ebbb3-3436-41d6-bd1e-614edc7c3023",
       "name": "training / To File"
@@ -1760,8 +1742,8 @@
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
       "position": [
-        640,
-        8848
+        672,
+        9376
       ],
       "id": "69867059-e176-4b56-800a-bb085cb38c7a",
       "name": "training / Write Session"
@@ -1772,7 +1754,7 @@
         "text": "⚠️ No dataset selected yet. Type *upload* or *previous* first.",
         "additionalFields": {
           "appendAttribution": false,
-          "parse_mode": "Markdown"
+          "parse_mode": "HTML"
         }
       },
       "type": "n8n-nodes-base.telegram",
@@ -1934,16 +1916,341 @@
     },
     {
       "parameters": {
-        "jsCode": "const s = $(\"Determine Route\").first().json;\n\nconst payload = {\n  chatId: s.chatId,\n\n  dataset_path: s.dataset_path,\n  dataset_name: s.dataset_name,\n\n  problem_type: s.problem_type,\n  target_column: s.target_column,\n\n  models: s.selected_models,\n\n  test_size: 0.2,\n  random_state: 42,\n\n  confidence: 1.0,\n\n  visualizations: [\n    \"confusion_matrix\",\n    \"feature_importance\",\n    \"roc_curve\"\n  ]\n};\n\nreturn [{\n  json: {\n    chatInput: JSON.stringify(payload)\n  }\n}];"
+        "jsCode": "const s = $(\"Determine Route\").first().json;\n\n\nconst recommended_models =\n    s.recommended_models ??\n    (s.selected_models || []).map((name,index)=>({\n        priority:index+1,\n        name,\n        params:{}\n    }));\n\nconst payload = {\n\n    chatId: s.chatId,\n\n    dataset_path: s.dataset_path,\n    dataset_name: s.dataset_name,\n\n    problem_type: s.problem_type,\n    target_column: s.target_column,\n\n    recommended_models: recommended_models,\n\n    test_size: 0.2,\n    random_state: 42,\n\n    confidence: 1.0,\n\n    visualizations: [\n        \"confusion_matrix\",\n        \"feature_importance\",\n        \"roc_curve\"\n    ]\n};\n\nreturn [{\n    json: {\n        chatInput: JSON.stringify(payload)\n    }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -256,
-        8848
+        -192,
+        9408
       ],
       "id": "1c87374d-3b7b-4164-863c-1827554fb591",
       "name": "Prepare Training"
+    },
+    {
+      "parameters": {
+        "url": "=http://ml_engine:8000/models/schema?problem_type={{ $json.problem_type }}",
+        "options": {}
+      },
+      "id": "19409494-bbf8-4b46-9871-e43566a78053",
+      "name": "Fetch Model Schema",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1792,
+        9680
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine the engine's editable-param schema with the user's request.\n// Only the schema for the currently-selected models is sent to the LLM,\n// which keeps the prompt (and token cost) small.\n\nconst trigger = $('When Executed by Another Workflow').first().json;\nconst schemaResp = $input.first().json;\n\nconst fullSchema = schemaResp.schema || {};\nconst selected = Array.isArray(trigger.selected_models)\n  ? trigger.selected_models\n  : [];\nconst userMessage = (trigger.user_message || '').toString().trim();\n\n// Slim schema -> only selected models, only what the LLM needs.\nconst slim = {};\nfor (const name of selected) {\n  const spec = fullSchema[name];\n  if (!spec) continue;\n  const params = {};\n  for (const [p, meta] of Object.entries(spec.params || {})) {\n    params[p] = {\n      type: meta.type,\n      default: meta.default,\n      ...(meta.min !== undefined ? { min: meta.min } : {}),\n      ...(meta.max !== undefined ? { max: meta.max } : {}),\n      ...(meta.choices !== undefined ? { choices: meta.choices } : {}),\n      ...(meta.nullable ? { nullable: true } : {})\n    };\n  }\n  slim[name] = params;\n}\n\nconst userPrompt =\n  'Selected models and their editable hyperparameters (with valid ranges):\\n' +\n  JSON.stringify(slim, null, 2) +\n  '\\n\\nUser request: \"' + userMessage + '\"\\n\\n' +\n  'Return the JSON patch now.';\n\nreturn [{\n  json: {\n    chatId: trigger.chatId,\n    problem_type: trigger.problem_type,\n    target_column: trigger.target_column,\n    dataset_path: trigger.dataset_path,\n    dataset_name: trigger.dataset_name,\n    selected_models: selected,\n    slim_schema: slim,\n    user_message: userMessage,\n    user_prompt: userPrompt\n  }\n}];"
+      },
+      "id": "771e9db4-214a-4819-a4f0-0efbcf369713",
+      "name": "Build AI Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1568,
+        9680
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "18f1d6cc-333b-48c6-a0b3-1da01b0a9977",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        9904
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "aQFbS0ZN6t4L4xKo",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Selected Models:\n\n{{ JSON.stringify($json.selected_models, null, 2) }}\n\nEditable Hyperparameters:\n\n{{ $json.HP_train_values }}\n\nUser Request:\n\n{{ $json.text }}",
+        "options": {
+          "systemMessage": "You are a machine-learning hyperparameter assistant.\n\nYou are given:\n\n1. Selected machine learning models.\n2. Their editable hyperparameters in a formatted list.\n3. The user's natural-language customization request.\n\nThe hyperparameter list looks like:\n\n🔹 Random Forest\n• n_estimators (int) → 10 to 1000 (default: 100)\n• max_depth (int) → 1 to 100 (default: null)\n• criterion (choice) → gini, entropy, log_loss (default: gini)\n\nYour task is to interpret the user's request and update only the requested parameters.\n\nIf the user replies exactly:\n\nNo\n\nor\n\nSkip\n\nor\n\nDefault\n\nor\n\nUse defaults\n\nthen DO NOT modify any hyperparameters.\n\nReturn ONLY valid JSON.\n\nThe JSON MUST have exactly two fields.\n\n{\n  \"updated_HP_train_values\": \"...\",\n  \"recommended_models\": {\n      \"Random Forest\": {\n          \"n_estimators\": 300,\n          \"max_depth\": 20\n      },\n      \"Gradient Boosting\": {\n          \"learning_rate\": 0.05\n      }\n  }\n}\n\nRules\n\n- Output ONLY JSON.\n- Never output markdown.\n- Never output explanations.\n- Keep every parameter inside its valid range.\n- Never invent parameter names.\n- Never modify parameters that the user didn't mention.\n- Preserve every model section in updated_HP_train_values.\n- When a parameter is changed, annotate that line like:\n\nn_estimators (int) → 10 to 1000 (default: 100) -> set to 300 by user\n\nor\n\nlearning_rate (float) → 0.001 to 1 (default: 0.1) -> set to 0.05 by user\n\nLeave unchanged parameters exactly as they were.\n\nIf the user says \"No\", \"Skip\", \"Default\", etc., return\n\n{\n  \"updated_HP_train_values\": \"<original text unchanged>\",\n  \"recommended_models\": {}\n}\n\nExamples\n\nUser:\nIncrease Random Forest trees to 500 and max depth to 15.\n\nOutput:\n\n{\n  \"updated_HP_train_values\":\"🔹 Random Forest\\n• n_estimators (int) → 10 to 1000 (default: 100) -> set to 500 by user\\n• max_depth (int) → 1 to 100 (default: null) -> set to 15 by user\\n...\",\n  \"recommended_models\":{\n      \"Random Forest\":{\n          \"n_estimators\":500,\n          \"max_depth\":15\n      }\n  }\n}"
+        }
+      },
+      "id": "1ad48930-2fa7-46b4-abfb-f7849cd0af63",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -528,
+        9664
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst selected = d.selected_models || [];\n\nconst MODEL_SCHEMA = {\n\n    \"Random Forest\": {\n        n_estimators: {\n            type: \"int\",\n            min: 10,\n            max: 1000,\n            default: 100\n        },\n        max_depth: {\n            type: \"int\",\n            min: 1,\n            max: 100,\n            default: null\n        },\n        min_samples_split: {\n            type: \"int\",\n            min: 2,\n            max: 20,\n            default: 2\n        },\n        min_samples_leaf: {\n            type: \"int\",\n            min: 1,\n            max: 20,\n            default: 1\n        },\n        criterion: {\n            type: \"choice\",\n            choices: [\"gini\", \"entropy\", \"log_loss\"],\n            default: \"gini\"\n        }\n    },\n\n    \"Gradient Boosting\": {\n        n_estimators: {\n            type: \"int\",\n            min: 10,\n            max: 1000,\n            default: 100\n        },\n        learning_rate: {\n            type: \"float\",\n            min: 0.001,\n            max: 1,\n            default: 0.1\n        },\n        max_depth: {\n            type: \"int\",\n            min: 1,\n            max: 20,\n            default: 3\n        },\n        subsample: {\n            type: \"float\",\n            min: 0.1,\n            max: 1.0,\n            default: 1.0\n        }\n    },\n\n    \"Logistic Regression\": {\n        C: {\n            type: \"float\",\n            min: 0.0001,\n            max: 1000,\n            default: 1.0\n        },\n        penalty: {\n            type: \"choice\",\n            choices: [\"l1\", \"l2\", \"elasticnet\", null],\n            default: \"l2\"\n        },\n        solver: {\n            type: \"choice\",\n            choices: [\n                \"lbfgs\",\n                \"liblinear\",\n                \"newton-cg\",\n                \"sag\",\n                \"saga\"\n            ],\n            default: \"lbfgs\"\n        },\n        max_iter: {\n            type: \"int\",\n            min: 50,\n            max: 5000,\n            default: 100\n        }\n    },\n\n    \"Decision Tree\": {\n        max_depth: {\n            type: \"int\",\n            min: 1,\n            max: 100,\n            default: null\n        },\n        min_samples_split: {\n            type: \"int\",\n            min: 2,\n            max: 20,\n            default: 2\n        },\n        min_samples_leaf: {\n            type: \"int\",\n            min: 1,\n            max: 20,\n            default: 1\n        },\n        criterion: {\n            type: \"choice\",\n            choices: [\n                \"gini\",\n                \"entropy\",\n                \"log_loss\"\n            ],\n            default: \"gini\"\n        }\n    },\n\n    \"AdaBoost\": {\n        n_estimators: {\n            type: \"int\",\n            min: 10,\n            max: 1000,\n            default: 50\n        },\n        learning_rate: {\n            type: \"float\",\n            min: 0.001,\n            max: 5,\n            default: 1.0\n        }\n    },\n\n    \"Naive Bayes\": {\n        var_smoothing: {\n            type: \"float\",\n            min: 1e-12,\n            max: 1,\n            default: 1e-9\n        }\n    },\n\n    \"Support Vector Machine\": {\n        C: {\n            type: \"float\",\n            min: 0.001,\n            max: 1000,\n            default: 1\n        },\n        kernel: {\n            type: \"choice\",\n            choices: [\n                \"linear\",\n                \"poly\",\n                \"rbf\",\n                \"sigmoid\"\n            ],\n            default: \"rbf\"\n        },\n        gamma: {\n            type: \"choice\",\n            choices: [\n                \"scale\",\n                \"auto\"\n            ],\n            default: \"scale\"\n        }\n    },\n\n    \"KNN\": {\n        n_neighbors: {\n            type: \"int\",\n            min: 1,\n            max: 50,\n            default: 5\n        },\n        weights: {\n            type: \"choice\",\n            choices: [\n                \"uniform\",\n                \"distance\"\n            ],\n            default: \"uniform\"\n        },\n        metric: {\n            type: \"choice\",\n            choices: [\n                \"minkowski\",\n                \"euclidean\",\n                \"manhattan\"\n            ],\n            default: \"minkowski\"\n        }\n    },\n\n    \"Neural Network\": {\n        hidden_layer_sizes: {\n            type: \"tuple\",\n            default: \"(100,)\"\n        },\n        activation: {\n            type: \"choice\",\n            choices: [\n                \"relu\",\n                \"tanh\",\n                \"logistic\"\n            ],\n            default: \"relu\"\n        },\n        alpha: {\n            type: \"float\",\n            min: 0.000001,\n            max: 1,\n            default: 0.0001\n        },\n        learning_rate_init: {\n            type: \"float\",\n            min: 0.00001,\n            max: 1,\n            default: 0.001\n        },\n        max_iter: {\n            type: \"int\",\n            min: 100,\n            max: 5000,\n            default: 200\n        }\n    }\n\n};\n\nconst lines = [];\n\nfor (const model of selected) {\n\n    const params = MODEL_SCHEMA[model];\n\n    if (!params) continue;\n\n    lines.push(`🔹 *${model}*`);\n\n    for (const [param, meta] of Object.entries(params)) {\n\n        let line = `• ${param}`;\n\n        if (meta.type)\n            line += ` (${meta.type})`;\n\n        if (meta.choices)\n            line += ` → ${meta.choices.join(\", \")}`;\n\n        else if (\n            meta.min !== undefined &&\n            meta.max !== undefined\n        )\n            line += ` → ${meta.min} to ${meta.max}`;\n\n        if (meta.default !== undefined)\n            line += ` (default: ${meta.default})`;\n\n        lines.push(line);\n    }\n\n    lines.push(\"\");\n}\n\nreturn [{\n    json: {\n        ...d,\n        HP_train_values: lines.join(\"\\n\"),\n        HP_schema: MODEL_SCHEMA\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        8816
+      ],
+      "id": "e20ff7ab-6e09-4f8b-bad0-6d1527d58a47",
+      "name": "HP training prep"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "=📋 *Customize Hyperparameters*\n\nThe following parameters can be customized for your selected models:\n\n{{$json.HP_train_values}}\n\nExamples:\n\n• Increase Random Forest to 500 trees\n• Set Random Forest max_depth to 20\n• Reduce Gradient Boosting learning rate to 0.05\n• Use Logistic Regression with C=5\n\nReply in natural language describing the changes you'd like.\n\nIf you don't want any changes, reply:\n\nNo",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -160,
+        8784
+      ],
+      "id": "fb08369f-6b9a-4c17-a390-f8cc469abdfb",
+      "name": "Send HP ask user",
+      "webhookId": "4762383a-c546-43df-8e9c-df2aa6cc07aa",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        176,
+        8880
+      ],
+      "id": "a72eb0cd-e5f8-4c7c-b304-f51f5c8ad694",
+      "name": "HP user wait session"
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $(\"Code in JavaScript\").first().json;\n\nlet ai = {};\n\ntry {\n\n    let txt = String($json.output).trim();\n\n    // Remove markdown code fences if present\n    txt = txt.replace(/^```json/i, \"\");\n    txt = txt.replace(/^```/, \"\");\n    txt = txt.replace(/```$/, \"\");\n\n    // Remove surrounding backticks\n    txt = txt.replace(/^`/, \"\");\n    txt = txt.replace(/`$/, \"\");\n\n    txt = txt.trim();\n\n    ai = JSON.parse(txt);\n\n} catch (e) {\n\n    throw new Error(\n        \"Could not parse AI output:\\n\\n\" + $json.output\n    );\n\n}\n\nconst DEFAULTS = {\n\n    \"Random Forest\": {\n        n_estimators: 100,\n        max_depth: null,\n        min_samples_split: 2,\n        min_samples_leaf: 1,\n        criterion: \"gini\"\n    },\n\n    \"Gradient Boosting\": {\n        n_estimators: 100,\n        learning_rate: 0.1,\n        max_depth: 3,\n        subsample: 1.0\n    },\n\n    \"Logistic Regression\": {\n        C: 1,\n        penalty: \"l2\",\n        solver: \"lbfgs\",\n        max_iter: 100\n    },\n\n    \"Decision Tree\": {\n        max_depth: null,\n        min_samples_split: 2,\n        min_samples_leaf: 1,\n        criterion: \"gini\"\n    },\n\n    \"AdaBoost\": {\n        n_estimators: 50,\n        learning_rate: 1\n    },\n\n    \"Naive Bayes\": {\n\n    },\n\n    \"Support Vector Machine\": {\n        C: 1,\n        kernel: \"rbf\",\n        gamma: \"scale\"\n    },\n\n    \"KNN\": {\n        n_neighbors: 5,\n        weights: \"uniform\",\n        metric: \"minkowski\"\n    },\n\n    \"Neural Network\": {\n        hidden_layer_sizes: 100,\n        activation: \"relu\",\n        alpha: 0.0001,\n        learning_rate_init: 0.001,\n        max_iter: 200\n    }\n\n};\n\nconst recommended_models = [];\n\nconst editedModels = ai.recommended_models || {};\n\nfor (const [i, model] of original.selected_models.entries()) {\n\n    const defaults = DEFAULTS[model] || {};\n\n    const edited = editedModels[model] || {};\n\n    recommended_models.push({\n\n        priority: i + 1,\n\n        name: model,\n\n        params: {\n\n            ...defaults,\n\n            ...edited\n\n        }\n\n    });\n\n}\n\nreturn [{\n\n    json: {\n\n        ...original,\n\n        HP_train_values:\n            ai.updated_HP_train_values || original.HP_train_values,\n\n        recommended_models\n\n    }\n\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        9120
+      ],
+      "id": "35aaeae7-9935-44e8-83c6-c3afd195986f",
+      "name": "HPtrain"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('Finalize Models').item.json; return [{ json: { chatId:d.chatId, state:'HP_train', dataset_path:d.dataset_path, dataset_name:d.dataset_name, columns:d.columns, target_column:d.target_column, problem_type:d.problem_type, available_models:d.available_models, selected_models:d.selected_models,HP_train_values:[], pending_files:[] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        8656
+      ],
+      "id": "4d829319-661d-4761-acc3-caa12b313559",
+      "name": "finalizemodel"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        8656
+      ],
+      "id": "66c46d86-be44-4e8e-b0d8-c207afbd0668",
+      "name": "confirm models"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('finalizemodel').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        8656
+      ],
+      "id": "91e7813f-35fe-4246-b0ce-febc61b60f56",
+      "name": "confirm models/write session state"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('HPtrain').item.json; return [{ json: { chatId:d.chatId, state:'confirm_train', dataset_path:d.dataset_path, dataset_name:d.dataset_name, columns:d.columns, target_column:d.target_column, problem_type:d.problem_type, available_models:d.available_models, selected_models:d.selected_models,HP_train_values:d.HP_train_values ,recommended_models:$input.first().json.recommended_models, pending_files:[] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        9200
+      ],
+      "id": "a942da35-4b2f-4ebf-a616-7e4fdc546d9f",
+      "name": "confirmready / Save Session"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "session.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        9184
+      ],
+      "id": "f554dd66-c8d1-487d-8282-a19c22617835",
+      "name": "confirmready / To File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('confirmready / Save Session').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        9184
+      ],
+      "id": "e0e06e88-eba5-4ca3-823a-b2c25f53ab55",
+      "name": "confirmready / Write Session"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "=📋 *Your plan*\n\nTarget column: `{{$json.target_column}}`\nProblem type: `{{$json.problem_type}}`\nModels: `{{$json.selected_models.join(', ')}}`\nTest split: 80/20\n\nConfirm? By typing \"HP train\" to start customizing the hyperparameters to train in the next step(Hyperparameter train)",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -176,
+        8496
+      ],
+      "id": "56afa35f-bb79-4b34-b5a4-67ee60380cbd",
+      "name": "Send Model Summary",
+      "webhookId": "4762383a-c546-43df-8e9c-df2aa6cc07aa",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json.chatId}}",
+        "text": "=📋 *Your plan*\n\nTarget column: `{{$json.target_column}}`\nProblem type: `{{$json.problem_type}}`\nModels: `{{$json.selected_models.join(', ')}}`\nHyperparameters:'{{$json.HP_train_values}}'\nTest split: 80/20\n\nConfirm? By typing \"confirm train\" to start training in the next steps",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        32,
+        9040
+      ],
+      "id": "9d4ccbd7-3af5-472c-b10a-39de1ab57938",
+      "name": "Send Confirm Summary",
+      "webhookId": "4762383a-c546-43df-8e9c-df2aa6cc07aa",
+      "credentials": {
+        "telegramApi": {
+          "id": "PXnVFLOJ0AOxaqFm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d=$('HP training prep').item.json; return [{ json: { chatId:d.chatId, state:'HP_user_wait', dataset_path:d.dataset_path, dataset_name:d.dataset_name, columns:d.columns, target_column:d.target_column, problem_type:d.problem_type, available_models:d.available_models, selected_models:d.selected_models,HP_train_values:d.HP_train_values, pending_files:[] } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        8880
+      ],
+      "id": "98700b23-ba8e-48d4-9601-f7ed628cd19c",
+      "name": "wait user HP"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/shared/sessions/{{$('wait user HP').first().json.chatId}}.json",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        8880
+      ],
+      "id": "fc05d8d2-4647-4135-b588-0eebd719694b",
+      "name": "HP_user wait / Write Session"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        9120
+      ],
+      "id": "f679d168-c2f3-4bf3-9488-b7e679a57d60",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Defensively parse the LLM output and merge it into recommended_models.\n// The engine re-validates and clamps everything server-side, so this node\n// only needs to produce well-formed structure and never crash on bad output.\n\nconst ctx = $('Build AI Prompt').first().json;\nconst selected = ctx.selected_models || [];\nconst slim = ctx.slim_schema || {};\n\nlet raw = $input.first().json;\nlet text = raw.output ?? raw.text ?? raw.response ?? '';\nif (typeof text !== 'string') text = JSON.stringify(text);\n\n// Strip markdown fences / surrounding prose, keep the outermost JSON object.\nfunction extractJson(s) {\n  if (!s) return {};\n  const start = s.indexOf('{');\n  const end = s.lastIndexOf('}');\n  if (start === -1 || end === -1 || end < start) return {};\n  try {\n    return JSON.parse(s.slice(start, end + 1));\n  } catch (e) {\n    return {};\n  }\n}\n\nconst patch = extractJson(text);\n\n// Build recommended_models: every selected model, with AI params where given.\n// Keep only params that exist in that model's schema (belt-and-suspenders;\n// the engine also drops unknowns).\nconst recommended_models = selected.map((name, index) => {\n  const allowed = slim[name] || {};\n  const proposed = (patch && typeof patch === 'object' && patch[name]) ? patch[name] : {};\n  const params = {};\n  for (const [k, v] of Object.entries(proposed)) {\n    if (k in allowed) params[k] = v;\n  }\n  return { priority: index + 1, name, params };\n});\n\n// Human-readable summary of what changed, for a Telegram confirmation.\nconst changed = recommended_models.filter(m => Object.keys(m.params).length > 0);\nlet summary;\nif (changed.length === 0) {\n  summary = 'No hyperparameter changes were applied (using defaults).';\n} else {\n  summary = changed.map(m => {\n    const kv = Object.entries(m.params).map(([k, v]) => `${k}=${v}`).join(', ');\n    return `• ${m.name}: ${kv}`;\n  }).join('\\n');\n}\n\nreturn [{\n  json: {\n    chatId: ctx.chatId,\n    problem_type: ctx.problem_type,\n    target_column: ctx.target_column,\n    dataset_path: ctx.dataset_path,\n    dataset_name: ctx.dataset_name,\n    selected_models: selected,\n    recommended_models,\n    customization_summary: summary,\n    ai_raw: text\n  }\n}];"
+      },
+      "id": "728dee90-6511-42dd-b61c-01f1e4cb2eb3",
+      "name": "Validate & Merge Patch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        9760
+      ]
     }
   ],
   "connections": {
@@ -2119,6 +2426,20 @@
         [
           {
             "node": "Finalize Models",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HP training prep",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript",
             "type": "main",
             "index": 0
           }
@@ -2639,34 +2960,12 @@
       "main": [
         [
           {
-            "node": "Send Confirm Summary",
+            "node": "Send Model Summary",
             "type": "main",
             "index": 0
           },
           {
-            "node": "confirmready / Save Session",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "confirmready / Save Session": {
-      "main": [
-        [
-          {
-            "node": "confirmready / To File",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "confirmready / To File": {
-      "main": [
-        [
-          {
-            "node": "confirmready / Write Session",
+            "node": "finalizemodel",
             "type": "main",
             "index": 0
           }
@@ -2760,6 +3059,153 @@
         [
           {
             "node": "Call Analyze & Train Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Model Schema": {
+      "main": [
+        [
+          {
+            "node": "Build AI Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build AI Prompt": {
+      "main": [
+        []
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HPtrain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HP training prep": {
+      "main": [
+        [
+          {
+            "node": "Send HP ask user",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "wait user HP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HP user wait session": {
+      "main": [
+        [
+          {
+            "node": "HP_user wait / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HPtrain": {
+      "main": [
+        [
+          {
+            "node": "confirmready / Save Session",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Confirm Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "finalizemodel": {
+      "main": [
+        [
+          {
+            "node": "confirm models",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "confirm models": {
+      "main": [
+        [
+          {
+            "node": "confirm models/write session state",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "confirmready / Save Session": {
+      "main": [
+        [
+          {
+            "node": "confirmready / To File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "confirmready / To File": {
+      "main": [
+        [
+          {
+            "node": "confirmready / Write Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wait user HP": {
+      "main": [
+        [
+          {
+            "node": "HP user wait session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
             "type": "main",
             "index": 0
           }

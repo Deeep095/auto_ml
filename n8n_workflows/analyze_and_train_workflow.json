@@ -116,7 +116,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = JSON.parse($input.first().json.chatInput);\n\nconst models = input.models\n    ? input.models\n    : (input.model ? [input.model] : []);\n\nconst visualizations = Array.isArray(input.visualizations)\n    ? input.visualizations\n    : (input.visualizations ? [input.visualizations] : []);\n\nreturn [\n  {\n    json: {\n      dataset_path: input.dataset_path,\n\n      execution_plan: {\n        problem_type: input.problem_type,\n        target_column: input.target_column,\n\n        preprocessing: {\n          missing_values: \"mean\",\n          categorical_missing: \"most_frequent\",\n          encoding: \"onehot\",\n          scaling: \"standard\"\n        },\n\n        recommended_models: models.map((model, index) => ({\n          priority: index + 1,\n          name: model\n        })),\n\n        visualizations: visualizations.map(v => ({\n          type: v\n        })),\n\n        test_size: input.test_size ?? 0.2,\n        random_state: input.random_state ?? 42,\n        confidence: input.confidence ?? 1.0\n      }\n    }\n  }\n];"
+        "jsCode": "const input = JSON.parse($input.first().json.chatInput);\n\nconst recommended_models =\n    Array.isArray(input.recommended_models)\n        ? input.recommended_models\n        : (input.models || []).map((model, index) => ({\n              priority: index + 1,\n              name: model,\n              params: {}\n          }));\n\nconst visualizations = Array.isArray(input.visualizations)\n    ? input.visualizations\n    : (input.visualizations ? [input.visualizations] : []);\n\nreturn [\n  {\n    json: {\n      dataset_path: input.dataset_path,\n\n      execution_plan: {\n        problem_type: input.problem_type,\n        target_column: input.target_column,\n\n        preprocessing: {\n          missing_values: \"mean\",\n          categorical_missing: \"most_frequent\",\n          encoding: \"onehot\",\n          scaling: \"standard\"\n        },\n\n        recommended_models: recommended_models,\n\n        visualizations: visualizations.map(v => ({\n          type: v\n        })),\n\n        test_size: input.test_size ?? 0.2,\n        random_state: input.random_state ?? 42,\n        confidence: input.confidence ?? 1.0\n      }\n    }\n  }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -252,6 +252,7 @@
   },
   "pinData": {},
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "62f1f1a6e702c198d04d70447022373f1d8ac30f2f895a3697f10ae527b226a8"
   }
 }

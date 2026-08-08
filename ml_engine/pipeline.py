@@ -8,10 +8,8 @@ from metrics import (
 )
 
 from models import (
-    CLASSIFICATION_MODELS,
-    REGRESSION_MODELS,
-    CLUSTERING_MODELS,
-    FORECASTING_MODELS
+    MODEL_SCHEMAS,
+    build_estimator
 )
 
 from plots import (
@@ -30,29 +28,19 @@ from utils import (
 import time
 
 
-def get_model_registry(problem_type):
+def validate_problem_type(problem_type):
 
-    if problem_type == "classification":
+    valid = {
+        spec["problem_type"]
+        for spec in MODEL_SCHEMAS.values()
+    }
 
-        return CLASSIFICATION_MODELS
+    if problem_type not in valid:
 
-    if problem_type == "regression":
-
-        return REGRESSION_MODELS
-
-    if problem_type == "forecasting":
-
-        return FORECASTING_MODELS
-
-    if problem_type == "clustering":
-
-        return CLUSTERING_MODELS
-
-    raise Exception(
-
-        f"Unsupported problem type : {problem_type}"
-
-    )
+        raise Exception(
+            f"Unsupported problem type : {problem_type}. "
+            f"Supported: {sorted(valid)}"
+        )
 
 
 
@@ -65,11 +53,9 @@ def train_models(
 
 ):
 
-    registry = get_model_registry(
+    problem_type = execution_plan["problem_type"]
 
-        execution_plan["problem_type"]
-
-    )
+    validate_problem_type(problem_type)
 
     X_train = prepared_data["X_train"]
 
@@ -87,6 +73,8 @@ def train_models(
 
     results = []
 
+    param_warnings = {}
+
     best_pipeline = None
 
     best_score = -999999
@@ -99,14 +87,35 @@ def train_models(
 
         model_name = model_info["name"]
 
-        if model_name not in registry:
+        if model_name not in MODEL_SCHEMAS:
+
+            print(f"Skipping unknown model: {model_name}", flush=True)
+
+            continue
+
+        if MODEL_SCHEMAS[model_name]["problem_type"] != problem_type:
+
+            print(
+                f"Skipping {model_name}: not a {problem_type} model.",
+                flush=True
+            )
 
             continue
 
         print("=" * 60, flush=True)
         print(f"Training {model_name}...", flush=True)
 
-        estimator = registry[model_name]
+        # Per-model hyperparameters supplied by the user / AI agent.
+        # Validated and clamped against the schema before instantiation.
+        estimator, warnings = build_estimator(
+            model_name,
+            model_info.get("params")
+        )
+
+        if warnings:
+            param_warnings[model_name] = warnings
+            for w in warnings:
+                print(f"  ⚠ {w}", flush=True)
 
         pipeline = Pipeline(
 
@@ -122,7 +131,7 @@ def train_models(
 
                 (
 
-                    "classifier",
+                    "model",
 
                     estimator
 
@@ -249,7 +258,9 @@ def train_models(
 
         "best_model": best_pipeline,
 
-        "best_model_name": best_model_name
+        "best_model_name": best_model_name,
+
+        "param_warnings": param_warnings
 
     }
 
@@ -547,7 +558,9 @@ def run_pipeline(
 
         "all_models": training_output["results"],
 
-        "artifacts": artifacts
+        "artifacts": artifacts,
+
+        "param_warnings": training_output.get("param_warnings", {})
 
     }
 
@@ -559,3 +572,7 @@ def run_pipeline(
     print("=" * 60, flush=True)
 
     return response
+
+
+
+

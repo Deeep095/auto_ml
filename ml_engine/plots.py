@@ -85,7 +85,7 @@ def generate_feature_importance(
     options = options or {}
     top_n = options.get("top_n", 15)
 
-    estimator = model.named_steps["classifier"]
+    estimator = model.named_steps["model"]
 
     if not hasattr(estimator, "feature_importances_"):
         return None
